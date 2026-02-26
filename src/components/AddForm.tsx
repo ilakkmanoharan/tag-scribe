@@ -7,11 +7,15 @@ type Category = { id: string; name: string };
 
 export function AddForm({ categories: initialCategories }: { categories: Category[] }) {
   const router = useRouter();
+  const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [highlight, setHighlight] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [categoryId, setCategoryId] = useState<string>("cat-inbox");
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoDataUrl, setVideoDataUrl] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [existingTags, setExistingTags] = useState<string[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -45,18 +49,61 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files?.length) {
+      const imageFiles: File[] = [];
+      let videoFile: File | null = null;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (f.type.startsWith("image/")) imageFiles.push(f);
+        else if (f.type.startsWith("video/")) videoFile = f;
+      }
+      if (imageFiles.length) {
+        imageFiles.forEach((file) => {
+          const reader = new FileReader();
+          reader.onload = () =>
+            setImageDataUrls((prev) => [...prev, reader.result as string]);
+          reader.readAsDataURL(file);
+        });
+      }
+      if (videoFile && !videoDataUrl && !videoUrl) {
+        const reader = new FileReader();
+        reader.onload = () => setVideoDataUrl(reader.result as string);
+        reader.readAsDataURL(videoFile);
+      }
+      if (imageFiles.length || videoFile) return;
+    }
     const text = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text");
     if (text) {
       const trimmed = text.trim();
       if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-        setUrl(trimmed);
+        if (trimmed.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) {
+          setVideoUrl(trimmed);
+        } else {
+          setUrl(trimmed);
+        }
       }
     }
-  }, []);
+  }, [videoDataUrl, videoUrl]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "link";
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handlePasteImage = useCallback((e: React.ClipboardEvent) => {
+    const file = e.clipboardData.files?.[0];
+    if (file?.type.startsWith("image/")) {
+      e.preventDefault();
+      const reader = new FileReader();
+      reader.onload = () =>
+        setImageDataUrls((prev) => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+    }
+  }, []);
+
+  const removeImage = useCallback((index: number) => {
+    setImageDataUrls((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const addTag = useCallback((tag: string) => {
@@ -102,42 +149,114 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
     e.preventDefault();
     setError("");
     const link = url.trim();
-    if (!link) {
-      setError("Please enter or paste a link.");
+    const hasLink = link && (link.startsWith("http://") || link.startsWith("https://"));
+    const hasImages = imageDataUrls.length > 0;
+    const hasVideo = !!(videoUrl.trim() || videoDataUrl);
+    const hasHighlight = !!highlight.trim();
+    const titleVal = title.trim() || undefined;
+
+    if (!hasLink && !hasImages && !hasVideo && !hasHighlight) {
+      setError("Add at least a link, a picture, a video, or some text.");
       return;
     }
-    if (!link.startsWith("http://") && !link.startsWith("https://")) {
+    if (hasLink && !link.startsWith("http://") && !link.startsWith("https://")) {
       setError("Link must start with http:// or https://");
       return;
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "link",
-          content: link,
-          title: undefined,
-          highlight: highlight.trim() || undefined,
-          tags: selectedTags,
-          categoryId: categoryId || null,
-          source: "web",
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to save");
+      const catId = categoryId || "cat-inbox";
+      const tags = selectedTags;
+      const caption = highlight.trim() || undefined;
+
+      for (const dataUrl of imageDataUrls) {
+        const formData = new FormData();
+        const blob = await (await fetch(dataUrl)).blob();
+        const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
+        formData.append("image", blob, `image.${ext}`);
+        if (titleVal) formData.append("title", titleVal);
+        if (caption) formData.append("caption", caption);
+        formData.append("tags", JSON.stringify(tags));
+        formData.append("categoryId", catId);
+        const res = await fetch("/api/items", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to save image");
+        }
       }
+      if (hasVideo) {
+        const videoContent = videoDataUrl || videoUrl.trim();
+        const res = await fetch("/api/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "video",
+            content: videoContent,
+            title: titleVal,
+            caption,
+            tags,
+            categoryId: catId,
+            source: "camera",
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to save");
+        }
+      }
+      if (hasLink) {
+        const res = await fetch("/api/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "link",
+            content: link,
+            title: titleVal,
+            highlight: caption,
+            tags,
+            categoryId: catId,
+            source: "web",
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to save");
+        }
+      }
+      if (!hasLink && !hasImages && !hasVideo && hasHighlight) {
+        const res = await fetch("/api/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "text",
+            content: highlight.trim(),
+            title: titleVal,
+            tags,
+            categoryId: catId,
+            source: "manual",
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to save");
+        }
+      }
+      setTitle("");
       setUrl("");
       setHighlight("");
+      setImageDataUrls([]);
+      setVideoUrl("");
+      setVideoDataUrl(null);
       setSelectedTags([]);
       setTagInput("");
       setCategoryId("cat-inbox");
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save link.");
+      setError(err instanceof Error ? err.message : "Failed to save.");
     } finally {
       setSaving(false);
     }
@@ -146,10 +265,24 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
   const selectedCategory = categories.find((c) => c.id === categoryId);
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+    <form onSubmit={handleSubmit} className="mt-6 space-y-6" onPaste={handlePasteImage}>
+      <div>
+        <label htmlFor="title" className="mb-1 block text-sm font-medium text-[var(--text)]">
+          Title (optional)
+        </label>
+        <input
+          id="title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Display title for this item"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+        />
+      </div>
+
       <div>
         <label htmlFor="url" className="mb-1 block text-sm font-medium text-[var(--text)]">
-          Link
+          Link (optional)
         </label>
         <input
           id="url"
@@ -164,6 +297,70 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
           autoComplete="url"
         />
       </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-[var(--text)]">
+          Pictures (optional) — add multiple
+        </label>
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          className="min-h-[100px] rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] p-4"
+        >
+          {imageDataUrls.length > 0 ? (
+            <div className="flex flex-wrap gap-3">
+              {imageDataUrls.map((dataUrl, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={dataUrl}
+                    alt={`Preview ${index + 1}`}
+                    className="h-24 w-24 rounded object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute -right-1 -top-1 rounded-full bg-[var(--border)] p-0.5 text-[var(--text)] hover:bg-red-500/20 hover:text-red-400"
+                    aria-label={`Remove picture ${index + 1}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <p className="mt-2 text-center text-sm text-[var(--muted)]">
+            Paste or drop pictures here
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-[var(--text)]">
+          Video (optional)
+        </label>
+        <input
+          type="url"
+          value={videoUrl}
+          onChange={(e) => setVideoUrl(e.target.value)}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          placeholder="Paste or drop a video URL (e.g. https://...mp4)"
+          className="mb-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+        />
+        {videoDataUrl ? (
+          <div className="relative inline-block">
+            <video src={videoDataUrl} controls className="max-h-40 rounded" />
+            <button
+              type="button"
+              onClick={() => setVideoDataUrl(null)}
+              className="absolute right-1 top-1 rounded bg-[var(--border)] px-2 py-0.5 text-sm text-[var(--text)] hover:bg-red-500/20 hover:text-red-400"
+            >
+              Remove video
+            </button>
+          </div>
+        ) : null}
+      </div>
+
       <div>
         <label htmlFor="highlight" className="mb-1 block text-sm font-medium text-[var(--text)]">
           Highlight (optional)
@@ -247,7 +444,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
       {/* Category: selector + list below + "+" to add new */}
       <div>
         <label className="mb-1 block text-sm font-medium text-[var(--text)]">
-          Category
+          Category (optional)
         </label>
         <div className="relative">
           <button

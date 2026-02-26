@@ -50,6 +50,7 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   const router = useRouter();
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleArchive = async () => {
     setArchiving(true);
@@ -162,7 +163,59 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
       )}
       {item.type === "image" && (
         <>
-          <p className="text-sm font-medium text-[var(--text)]">Image</p>
+          <div className="mt-2 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--border)]/30">
+            {imageError ? (
+              <div className="flex max-h-56 min-h-[120px] flex-col items-center justify-center gap-2 py-6 text-center text-sm text-[var(--muted)]">
+                <p>Image couldn’t be loaded.</p>
+                <p>Delete this card and add the image again from Add to restore it.</p>
+              </div>
+            ) : (
+              <img
+                src={`/api/items/${item.id}/image`}
+                alt={item.title || item.caption || "Saved image"}
+                className="block max-h-56 min-h-[120px] w-auto max-w-full object-contain"
+                onError={() => setImageError(true)}
+              />
+            )}
+          </div>
+          {item.title && (
+            <p className="mt-2 text-sm font-medium text-[var(--text)]">{item.title}</p>
+          )}
+          {!item.title && (
+            <p className="mt-2 text-sm font-medium text-[var(--text)]">Image</p>
+          )}
+          {item.caption && (
+            <p className="mt-1 text-sm text-[var(--muted)]">{item.caption}</p>
+          )}
+          {item.tags.length > 0 && (
+            <p className="mt-2 flex flex-wrap gap-1.5 text-xs text-[var(--muted)]">
+              {item.tags.map((t) => (
+                <span key={t} className="rounded bg-[var(--border)] px-2 py-0.5">
+                  {t}
+                </span>
+              ))}
+            </p>
+          )}
+        </>
+      )}
+      {item.type === "video" && (
+        <>
+          {item.title && (
+            <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
+          )}
+          {!item.title && <p className="text-sm font-medium text-[var(--text)]">Video</p>}
+          {item.content.startsWith("data:") ? (
+            <video src={item.content} controls className="mt-1 max-h-48 rounded" />
+          ) : (
+            <a
+              href={item.content}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 block text-sm text-[var(--accent)] hover:underline"
+            >
+              {item.content.slice(0, 60)}…
+            </a>
+          )}
           {item.caption && (
             <p className="mt-1 text-sm text-[var(--muted)]">{item.caption}</p>
           )}

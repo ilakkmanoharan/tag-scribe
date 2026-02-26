@@ -3,7 +3,7 @@
  * See docs/PRODUCT.md for the full product vision.
  */
 
-export type ItemType = "link" | "image" | "text";
+export type ItemType = "link" | "image" | "text" | "video";
 
 export type SourceHint = "web" | "book" | "camera" | "manual" | "social";
 

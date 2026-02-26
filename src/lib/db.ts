@@ -47,6 +47,34 @@ function initSchema(database: Database.Database) {
   } catch {
     // column already exists
   }
+  // Allow type 'video': migrate items table if it still has old CHECK
+  try {
+    database.exec(
+      "INSERT INTO items (id, type, content, created_at, updated_at, tags) VALUES ('_v', 'video', '', datetime('now'), datetime('now'), '[]')"
+    );
+    database.exec("DELETE FROM items WHERE id = '_v'");
+  } catch {
+    database.exec(`
+      CREATE TABLE items_new (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        content TEXT NOT NULL,
+        title TEXT,
+        highlight TEXT,
+        caption TEXT,
+        tags TEXT NOT NULL DEFAULT '[]',
+        category_id TEXT,
+        source TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        archived_at TEXT,
+        FOREIGN KEY (category_id) REFERENCES categories(id)
+      );
+      INSERT INTO items_new SELECT id, type, content, title, highlight, caption, tags, category_id, source, created_at, updated_at, archived_at FROM items;
+      DROP TABLE items;
+      ALTER TABLE items_new RENAME TO items;
+    `);
+  }
   const now = new Date().toISOString();
   database
     .prepare(
@@ -94,6 +122,12 @@ export function getCategoryById(id: string): Category | undefined {
   const database = getDb();
   const row = database.prepare("SELECT * FROM categories WHERE id = ?").get(id) as Record<string, unknown> | undefined;
   return row ? rowToCategory(row) : undefined;
+}
+
+export function getItemById(id: string): Item | undefined {
+  const database = getDb();
+  const row = database.prepare("SELECT * FROM items WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToItem(row) : undefined;
 }
 
 /** Returns non-archived items (for Library and category views). */
