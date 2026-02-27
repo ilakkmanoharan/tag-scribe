@@ -172,6 +172,25 @@ export function setItemArchived(id: string, archived: boolean): Item | undefined
   return rowToItem({ ...row, archived_at: archived ? now : null, updated_at: now });
 }
 
+export function updateItemCategory(id: string, categoryId: string): Item | undefined {
+  const database = getDb();
+  const row = database.prepare("SELECT * FROM items WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  if (!row) return undefined;
+  const now = new Date().toISOString();
+  database.prepare("UPDATE items SET category_id = ?, updated_at = ? WHERE id = ?").run(categoryId, now, id);
+  return rowToItem({ ...row, category_id: categoryId, updated_at: now });
+}
+
+export function updateItemTags(id: string, tags: string[]): Item | undefined {
+  const database = getDb();
+  const row = database.prepare("SELECT * FROM items WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  if (!row) return undefined;
+  const normalized = tags.map((t) => t.trim()).filter(Boolean);
+  const now = new Date().toISOString();
+  database.prepare("UPDATE items SET tags = ?, updated_at = ? WHERE id = ?").run(JSON.stringify(normalized), now, id);
+  return rowToItem({ ...row, tags: JSON.stringify(normalized), updated_at: now });
+}
+
 export function deleteItem(id: string): boolean {
   const database = getDb();
   const result = database.prepare("DELETE FROM items WHERE id = ?").run(id);

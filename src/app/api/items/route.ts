@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { writeFile, mkdir, stat } from "fs/promises";
 import path from "path";
-import { getAllItems, createItem } from "@/lib/db";
+import * as firestore from "@/lib/firestore";
+import { requireUidOrNull } from "@/lib/auth-server";
 import type { ItemType, SourceHint } from "@/types";
 
 const VALID_SOURCES: SourceHint[] = ["web", "book", "camera", "manual", "social"];
@@ -27,9 +28,35 @@ function parseImageDataUrl(id: string, dataUrl: string): { filePath: string; rel
   return { filePath, relativePath, buffer, dir };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const items = getAllItems();
+    const result = await requireUidOrNull(request);
+    if ("status" in result && result.status === 401) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const { searchParams } = new URL(request.url);
+    const archived = searchParams.get("archived") === "true";
+    const categoryId = searchParams.get("categoryId");
+    const tag = searchParams.get("tag");
+
+    if (result.uid) {
+      const items = archived
+        ? await firestore.getArchivedItems(result.uid)
+        : tag != null
+          ? await firestore.getItemsByTag(result.uid, tag)
+          : categoryId != null
+            ? await firestore.getItemsByCategoryId(result.uid, categoryId)
+            : await firestore.getAllItems(result.uid);
+      return NextResponse.json(items);
+    }
+    const { getAllItems, getArchivedItems, getItemsByCategoryId, getItemsByTag } = await import("@/lib/db");
+    const items = archived
+      ? getArchivedItems()
+      : tag != null
+        ? getItemsByTag(tag)
+        : categoryId != null
+          ? getItemsByCategoryId(categoryId)
+          : getAllItems();
     return NextResponse.json(items);
   } catch (e) {
     console.error(e);
@@ -120,6 +147,26 @@ export async function POST(request: Request) {
       }
     }
 
+    const result = await requireUidOrNull(request);
+    if ("status" in result && result.status === 401) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (result.uid) {
+      await firestore.ensureInboxCategory(result.uid);
+      const item = await firestore.createItem(result.uid, {
+        id,
+        type,
+        content: contentToStore,
+        title,
+        highlight,
+        caption,
+        tags,
+        categoryId,
+        source: sourceHint,
+      });
+      return NextResponse.json(item);
+    }
+    const { createItem } = await import("@/lib/db");
     const item = createItem({
       id,
       type,

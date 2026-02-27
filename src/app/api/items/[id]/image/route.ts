@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
-import { getItemById } from "@/lib/db";
+import * as firestore from "@/lib/firestore";
+import { getUidFromRequest, isFirebaseAdminConfigured } from "@/lib/auth-server";
 
 const MIME_BY_EXT: Record<string, string> = {
   png: "image/png",
@@ -12,11 +13,27 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    if (isFirebaseAdminConfigured()) {
+      const uid = await getUidFromRequest(request);
+      if (!uid) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      const item = await firestore.getItemById(uid, id);
+      if (!item || item.type !== "image") {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      const content = item.content;
+      if (content.startsWith("http")) {
+        return NextResponse.redirect(content);
+      }
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const { getItemById } = await import("@/lib/db");
     const item = getItemById(id);
     if (!item || item.type !== "image") {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

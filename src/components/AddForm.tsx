@@ -2,11 +2,13 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Category = { id: string; name: string };
 
 export function AddForm({ categories: initialCategories }: { categories: Category[] }) {
   const router = useRouter();
+  const { getAuthHeaders } = useAuth();
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [highlight, setHighlight] = useState("");
@@ -30,11 +32,13 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
   }, [initialCategories]);
 
   useEffect(() => {
-    fetch("/api/tags")
-      .then((r) => r.ok ? r.json() : [])
-      .then((tags: string[]) => setExistingTags(tags))
+    let cancelled = false;
+    getAuthHeaders().then((headers) => fetch("/api/tags", { headers }))
+      .then((r) => (r && r.ok ? r.json() : []))
+      .then((tags: string[]) => { if (!cancelled) setExistingTags(Array.isArray(tags) ? tags : []); })
       .catch(() => {});
-  }, []);
+    return () => { cancelled = true; };
+  }, [getAuthHeaders]);
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -123,9 +127,10 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
     setAddingCategory(true);
     setError("");
     try {
+      const headers = { "Content-Type": "application/json", ...await getAuthHeaders() };
       const res = await fetch("/api/categories", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ name }),
       });
       if (!res.ok) {
@@ -178,8 +183,10 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
         if (caption) formData.append("caption", caption);
         formData.append("tags", JSON.stringify(tags));
         formData.append("categoryId", catId);
+        const authH = await getAuthHeaders();
         const res = await fetch("/api/items", {
           method: "POST",
+          headers: authH,
           body: formData,
         });
         if (!res.ok) {
@@ -189,9 +196,10 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
       }
       if (hasVideo) {
         const videoContent = videoDataUrl || videoUrl.trim();
+        const headers = { "Content-Type": "application/json", ...await getAuthHeaders() };
         const res = await fetch("/api/items", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             type: "video",
             content: videoContent,
@@ -208,9 +216,10 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
         }
       }
       if (hasLink) {
+        const headers = { "Content-Type": "application/json", ...await getAuthHeaders() };
         const res = await fetch("/api/items", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             type: "link",
             content: link,
@@ -227,9 +236,10 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
         }
       }
       if (!hasLink && !hasImages && !hasVideo && hasHighlight) {
+        const headers = { "Content-Type": "application/json", ...await getAuthHeaders() };
         const res = await fetch("/api/items", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             type: "text",
             content: highlight.trim(),

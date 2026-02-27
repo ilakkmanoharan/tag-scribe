@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 type CategoryRowProps = {
   id: string;
@@ -34,6 +35,7 @@ function TrashIcon() {
 
 export function CategoryRow({ id, name, count, isInbox }: CategoryRowProps) {
   const router = useRouter();
+  const { getAuthHeaders } = useAuth();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(name);
   const [saving, setSaving] = useState(false);
@@ -48,9 +50,10 @@ export function CategoryRow({ id, name, count, isInbox }: CategoryRowProps) {
     }
     setSaving(true);
     try {
+      const headers = { "Content-Type": "application/json", ...await getAuthHeaders() };
       const res = await fetch(`/api/categories/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ name: trimmed }),
       });
       if (!res.ok) throw new Error("Failed to update");
@@ -68,7 +71,7 @@ export function CategoryRow({ id, name, count, isInbox }: CategoryRowProps) {
     if (!confirm(`Delete "${name}"? Items in this category will move to Inbox.`)) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/categories/${id}`, { method: "DELETE", headers: await getAuthHeaders() });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to delete");
