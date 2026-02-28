@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import * as firestore from "@/lib/firestore";
 import { getUidFromRequest, isFirebaseAdminConfigured } from "@/lib/auth-server";
+import { getItemImageSignedUrl } from "@/lib/storage-server";
 
 const MIME_BY_EXT: Record<string, string> = {
   png: "image/png",
@@ -28,7 +29,11 @@ export async function GET(
       }
       const content = item.content;
       if (content.startsWith("http")) {
-        return NextResponse.redirect(content);
+        return NextResponse.json({ url: content });
+      }
+      if (content.startsWith("users/")) {
+        const url = await getItemImageSignedUrl(content);
+        if (url) return NextResponse.json({ url });
       }
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }

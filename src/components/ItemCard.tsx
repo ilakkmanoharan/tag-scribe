@@ -59,11 +59,12 @@ function MoveIcon() {
 
 export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }: ItemCardProps) {
   const router = useRouter();
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, isFirebaseEnabled } = useAuth();
   const moveMenuRef = useRef<HTMLDivElement>(null);
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [moveOpen, setMoveOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [moving, setMoving] = useState(false);
@@ -92,6 +93,19 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [getAuthHeaders]);
+
+  useEffect(() => {
+    if (item.type !== "image" || !isFirebaseEnabled) return;
+    let cancelled = false;
+    getAuthHeaders()
+      .then((headers) => fetch(`/api/items/${item.id}/image`, { headers }))
+      .then((r) => (r?.ok ? r.json() : null))
+      .then((data: { url?: string } | null) => {
+        if (!cancelled && data?.url) setImageSrc(data.url);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [item.id, item.type, isFirebaseEnabled, getAuthHeaders]);
 
   const authHeaders = () => getAuthHeaders();
 
@@ -370,7 +384,7 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
               </div>
             ) : (
               <img
-                src={`/api/items/${item.id}/image`}
+                src={imageSrc ?? `/api/items/${item.id}/image`}
                 alt={item.title || item.caption || "Saved image"}
                 className="block max-h-56 min-h-[120px] w-auto max-w-full object-contain"
                 onError={() => setImageError(true)}

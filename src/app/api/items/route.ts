@@ -3,6 +3,7 @@ import { writeFile, mkdir, stat } from "fs/promises";
 import path from "path";
 import * as firestore from "@/lib/firestore";
 import { requireUidOrNull } from "@/lib/auth-server";
+import { uploadItemImage } from "@/lib/storage-server";
 import type { ItemType, SourceHint } from "@/types";
 
 const VALID_SOURCES: SourceHint[] = ["web", "book", "camera", "manual", "social"];
@@ -66,6 +67,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const result = await requireUidOrNull(request);
+    if ("status" in result && result.status === 401) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const contentType = request.headers.get("content-type") || "";
     let id: string;
     let type: ItemType;
@@ -86,18 +92,24 @@ export async function POST(request: Request) {
       type = "image";
       id = "item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
       const mime = (imageFile.type || "image/png").toLowerCase();
-      const ext = MIME_EXT[mime] || "png";
-      const dir = path.join(process.cwd(), "private", "uploads", "items");
-      const filePath = path.join(dir, `${id}.${ext}`);
-      await mkdir(dir, { recursive: true });
       const arrayBuffer = await imageFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      await writeFile(filePath, buffer);
-      const st = await stat(filePath);
-      if (!st.size) {
-        return NextResponse.json({ error: "Image could not be saved to disk" }, { status: 500 });
+
+      if (result.uid) {
+        contentToStore = await uploadItemImage(result.uid, id, buffer, mime);
+      } else {
+        const ext = MIME_EXT[mime] || "png";
+        const dir = path.join(process.cwd(), "private", "uploads", "items");
+        const filePath = path.join(dir, `${id}.${ext}`);
+        await mkdir(dir, { recursive: true });
+        await writeFile(filePath, buffer);
+        const st = await stat(filePath);
+        if (!st.size) {
+          return NextResponse.json({ error: "Image could not be saved to disk" }, { status: 500 });
+        }
+        contentToStore = `uploads/items/${id}.${ext}`;
       }
-      contentToStore = `uploads/items/${id}.${ext}`;
+
       title = (formData.get("title") as string)?.trim() || undefined;
       caption = (formData.get("caption") as string)?.trim() || undefined;
       const tagsRaw = formData.get("tags");
@@ -137,20 +149,21 @@ export async function POST(request: Request) {
       if (type === "image" && contentToStore.startsWith("data:image/")) {
         const parsed = parseImageDataUrl(id, contentToStore);
         if (parsed) {
-          await mkdir(parsed.dir, { recursive: true });
-          await writeFile(parsed.filePath, parsed.buffer);
-          const st = await stat(parsed.filePath).catch(() => null);
-          if (st && st.size > 0) {
-            contentToStore = parsed.relativePath;
+          if (result.uid) {
+            const mime = contentToStore.match(/^data:(image\/[a-z]+);/i)?.[1] || "image/png";
+            contentToStore = await uploadItemImage(result.uid, id, parsed.buffer, mime);
+          } else {
+            await mkdir(parsed.dir, { recursive: true });
+            await writeFile(parsed.filePath, parsed.buffer);
+            const st = await stat(parsed.filePath).catch(() => null);
+            if (st && st.size > 0) {
+              contentToStore = parsed.relativePath;
+            }
           }
         }
       }
     }
 
-    const result = await requireUidOrNull(request);
-    if ("status" in result && result.status === 401) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (result.uid) {
       await firestore.ensureInboxCategory(result.uid);
       const item = await firestore.createItem(result.uid, {
