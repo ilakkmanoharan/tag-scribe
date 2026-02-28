@@ -6,6 +6,8 @@ import { requireUidOrNull } from "@/lib/auth-server";
 import { uploadItemImage } from "@/lib/storage-server";
 import type { ItemType, SourceHint } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 const VALID_SOURCES: SourceHint[] = ["web", "book", "camera", "manual", "social"];
 
 const MIME_EXT: Record<string, string> = {
@@ -96,7 +98,15 @@ export async function POST(request: Request) {
       const buffer = Buffer.from(arrayBuffer);
 
       if (result.uid) {
-        contentToStore = await uploadItemImage(result.uid, id, buffer, mime);
+        try {
+          contentToStore = await uploadItemImage(result.uid, id, buffer, mime);
+        } catch (uploadErr) {
+          console.error("Firebase Storage upload failed:", uploadErr);
+          return NextResponse.json(
+            { error: "Failed to upload image to storage" },
+            { status: 500 }
+          );
+        }
       } else {
         const ext = MIME_EXT[mime] || "png";
         const dir = path.join(process.cwd(), "private", "uploads", "items");
@@ -150,8 +160,16 @@ export async function POST(request: Request) {
         const parsed = parseImageDataUrl(id, contentToStore);
         if (parsed) {
           if (result.uid) {
-            const mime = contentToStore.match(/^data:(image\/[a-z]+);/i)?.[1] || "image/png";
-            contentToStore = await uploadItemImage(result.uid, id, parsed.buffer, mime);
+            try {
+              const mime = contentToStore.match(/^data:(image\/[a-z]+);/i)?.[1] || "image/png";
+              contentToStore = await uploadItemImage(result.uid, id, parsed.buffer, mime);
+            } catch (uploadErr) {
+              console.error("Firebase Storage upload failed (data URL):", uploadErr);
+              return NextResponse.json(
+                { error: "Failed to upload image to storage" },
+                { status: 500 }
+              );
+            }
           } else {
             await mkdir(parsed.dir, { recursive: true });
             await writeFile(parsed.filePath, parsed.buffer);

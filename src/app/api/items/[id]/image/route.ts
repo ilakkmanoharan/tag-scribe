@@ -5,6 +5,8 @@ import * as firestore from "@/lib/firestore";
 import { getUidFromRequest, isFirebaseAdminConfigured } from "@/lib/auth-server";
 import { getItemImageSignedUrl } from "@/lib/storage-server";
 
+export const dynamic = "force-dynamic";
+
 const MIME_BY_EXT: Record<string, string> = {
   png: "image/png",
   jpg: "image/jpeg",

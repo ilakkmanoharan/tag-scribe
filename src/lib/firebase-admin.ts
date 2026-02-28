@@ -29,6 +29,9 @@ function getAdminApp(): admin.app.App | null {
     return admin.initializeApp({
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       ...(credential ? { credential } : {}),
+      ...(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        ? { storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }
+        : {}),
     });
   } catch {
     return null;

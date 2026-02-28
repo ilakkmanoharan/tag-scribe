@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import * as firestore from "@/lib/firestore";
 import { requireUidOrNull } from "@/lib/auth-server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const result = await requireUidOrNull(request);
