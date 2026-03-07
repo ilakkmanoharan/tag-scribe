@@ -46,5 +46,12 @@ Thumbs.db
 # Testing
 coverage/
 
+# Android
+apps/android/.gradle/
+apps/android/build/
+apps/android/app/build/
+*.iml
+local.properties
+
 # Misc
 .turbo
