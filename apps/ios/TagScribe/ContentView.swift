@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var items: [Item] = []
-    @State private var error: String?
+    @State private var errorMessage: String?
     @State private var loading = true
 
     var body: some View {
@@ -10,7 +10,7 @@ struct ContentView: View {
             Group {
                 if loading {
                     ProgressView("Loading…")
-                } else if let err = error {
+                } else if let err = errorMessage {
                     VStack(spacing: 12) {
                         Text(err)
                             .foregroundStyle(.secondary)
@@ -36,7 +36,7 @@ struct ContentView: View {
             }
             .navigationTitle("Tag Scribe")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button("Sign out") {
                         try? AuthManager.shared.signOut()
                     }
@@ -49,14 +49,14 @@ struct ContentView: View {
 
     private func load() async {
         loading = true
-        error = nil
+        errorMessage = nil
         defer { loading = false }
         do {
             items = try await APIClient.shared.getItems()
         } catch APIError.unauthorized {
-            error = "Not signed in"
-        } catch {
-            error = error.localizedDescription
+            errorMessage = "Not signed in"
+        } catch let err {
+            errorMessage = err.localizedDescription
         }
     }
 }

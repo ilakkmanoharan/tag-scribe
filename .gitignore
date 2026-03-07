@@ -46,6 +46,11 @@ Thumbs.db
 # Testing
 coverage/
 
+# iOS / Xcode
+apps/ios/GoogleService-Info.plist
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+
 # Android
 apps/android/.gradle/
 apps/android/build/

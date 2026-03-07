@@ -10,18 +10,40 @@ struct SignInView: View {
 
     enum Field { case email, password }
 
+    private var emailField: some View {
+        Group {
+            #if os(iOS)
+            TextField("Email", text: $email)
+                .textContentType(.emailAddress)
+                .autocapitalization(.none)
+                .keyboardType(.emailAddress)
+                .focused($focusedField, equals: .email)
+            #else
+            TextField("Email", text: $email)
+                .focused($focusedField, equals: .email)
+            #endif
+        }
+    }
+
+    private var passwordField: some View {
+        Group {
+            #if os(iOS)
+            SecureField("Password", text: $password)
+                .textContentType(isSignUp ? .newPassword : .password)
+                .focused($focusedField, equals: .password)
+            #else
+            SecureField("Password", text: $password)
+                .focused($focusedField, equals: .password)
+            #endif
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .autocapitalization(.none)
-                        .keyboardType(.emailAddress)
-                        .focused($focusedField, equals: .email)
-                    SecureField("Password", text: $password)
-                        .textContentType(isSignUp ? .newPassword : .password)
-                        .focused($focusedField, equals: .password)
+                    emailField
+                    passwordField
                 } header: {
                     Text("Tag Scribe")
                 } footer: {

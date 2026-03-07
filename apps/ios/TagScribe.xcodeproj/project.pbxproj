@@ -6,104 +6,238 @@
 	objectVersion = 56;
 	objects = {
 
-		/* File refs */
-		REF001 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagScribeApp.swift; sourceTree = "<group>"; };
-		REF002 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		REF003 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
-		REF004 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
-		REF005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
-		REF006 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		REF007 = { isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		REF008 = { isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		REF009 = { isa = PBXFileReference; lastKnownFileType = wrapper.application; explicitFileType = wrapper.application; includeInIndex = 0; path = TagScribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		REF010 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		REF011 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+/* Begin PBXBuildFile section */
+		19F1D60A2F5BD6BE00122A34 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */; };
+		BLD001 /* TagScribeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF001 /* TagScribeApp.swift */; };
+		BLD002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF002 /* ContentView.swift */; };
+		BLD003 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF003 /* Item.swift */; };
+		BLD004 /* Category.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF004 /* Category.swift */; };
+		BLD005 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF005 /* AuthManager.swift */; };
+		BLD006 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF006 /* APIClient.swift */; };
+		BLD007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = REF008 /* Assets.xcassets */; };
+		BLD008 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD /* FirebaseAuth */; };
+		BLD009 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD2 /* FirebaseCore */; };
+		BLD010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF010 /* RootView.swift */; };
+		BLD011 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF011 /* SignInView.swift */; };
+/* End PBXBuildFile section */
 
-		/* Swift Package: Firebase */
-		PKGREF = { isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/firebase/firebase-ios-sdk"; requirement = { kind = upToNextMajorVersion; minimumVersion = "11.0.0"; }; };
-		PKGPROD = { isa = XCSwiftPackageProductDependency; productName = FirebaseAuth; package = PKGREF; };
-		PKGPROD2 = { isa = XCSwiftPackageProductDependency; productName = FirebaseCore; package = PKGREF; };
+/* Begin PBXFileReference section */
+		19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		REF001 /* TagScribeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagScribeApp.swift; sourceTree = "<group>"; };
+		REF002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		REF003 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
+		REF004 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
+		REF005 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		REF006 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		REF007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		REF008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		REF009 /* TagScribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TagScribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		REF010 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		REF011 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
 
-		/* Groups */
-		GRP001 = { isa = PBXGroup; children = ( GRP002, GRP003 ); sourceTree = "<group>"; };
-		GRP002 = { isa = PBXGroup; children = ( REF009 ); name = Products; sourceTree = "<group>"; };
-		GRP003 = { isa = PBXGroup; children = ( REF001, REF002, GRP007, GRP004, GRP005, GRP006, REF007, REF008 ); name = TagScribe; path = TagScribe; sourceTree = "<group>"; };
-		GRP007 = { isa = PBXGroup; children = ( REF010, REF011 ); name = Views; path = Views; sourceTree = "<group>"; };
-		GRP004 = { isa = PBXGroup; children = ( REF003, REF004 ); name = Models; path = Models; sourceTree = "<group>"; };
-		GRP005 = { isa = PBXGroup; children = ( REF005 ); name = Auth; path = Auth; sourceTree = "<group>"; };
-		GRP006 = { isa = PBXGroup; children = ( REF006 ); name = Services; path = Services; sourceTree = "<group>"; };
-
-		/* Build files */
-		BLD001 = { isa = PBXBuildFile; fileRef = REF001; };
-		BLD002 = { isa = PBXBuildFile; fileRef = REF002; };
-		BLD003 = { isa = PBXBuildFile; fileRef = REF003; };
-		BLD004 = { isa = PBXBuildFile; fileRef = REF004; };
-		BLD005 = { isa = PBXBuildFile; fileRef = REF005; };
-		BLD006 = { isa = PBXBuildFile; fileRef = REF006; };
-		BLD007 = { isa = PBXBuildFile; fileRef = REF008; };
-		BLD010 = { isa = PBXBuildFile; fileRef = REF010; };
-		BLD011 = { isa = PBXBuildFile; fileRef = REF011; };
-
-		/* Sources build phase */
-		SRC001 = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = ( BLD001, BLD002, BLD003, BLD004, BLD005, BLD006, BLD010, BLD011 );
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-
-		/* Frameworks build phase */
-		FRM001 = {
+/* Begin PBXFrameworksBuildPhase section */
+		FRM001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = ( BLD008, BLD009 );
+			files = (
+				BLD008 /* FirebaseAuth in Frameworks */,
+				BLD009 /* FirebaseCore in Frameworks */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		BLD008 = { isa = PBXBuildFile; productRef = PKGPROD; };
-		BLD009 = { isa = PBXBuildFile; productRef = PKGPROD2; };
+/* End PBXFrameworksBuildPhase section */
 
-		/* Resources build phase */
-		RSR001 = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = ( BLD007 );
-			runOnlyForDeploymentPostprocessing = 0;
+/* Begin PBXGroup section */
+		GRP001 = {
+			isa = PBXGroup;
+			children = (
+				19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */,
+				GRP002 /* Products */,
+				GRP003 /* TagScribe */,
+			);
+			sourceTree = "<group>";
 		};
+		GRP002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				REF009 /* TagScribe.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		GRP003 /* TagScribe */ = {
+			isa = PBXGroup;
+			children = (
+				REF001 /* TagScribeApp.swift */,
+				REF002 /* ContentView.swift */,
+				GRP007 /* Views */,
+				GRP004 /* Models */,
+				GRP005 /* Auth */,
+				GRP006 /* Services */,
+				REF007 /* Info.plist */,
+				REF008 /* Assets.xcassets */,
+			);
+			path = TagScribe;
+			sourceTree = "<group>";
+		};
+		GRP004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				REF003 /* Item.swift */,
+				REF004 /* Category.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		GRP005 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				REF005 /* AuthManager.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		GRP006 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				REF006 /* APIClient.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		GRP007 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				REF010 /* RootView.swift */,
+				REF011 /* SignInView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
 
-		/* Native target */
-		TGT001 = {
+/* Begin PBXNativeTarget section */
+		TGT001 /* TagScribe */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CFG002;
-			buildPhases = ( SRC001, FRM001, RSR001 );
-			buildRules = ();
-			dependencies = ();
+			buildConfigurationList = CFG002 /* Build configuration list for PBXNativeTarget "TagScribe" */;
+			buildPhases = (
+				SRC001 /* Sources */,
+				FRM001 /* Frameworks */,
+				RSR001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
 			name = TagScribe;
-			packageProductDependencies = ( PKGPROD, PKGPROD2 );
+			packageProductDependencies = (
+				PKGPROD /* FirebaseAuth */,
+				PKGPROD2 /* FirebaseCore */,
+			);
 			productName = TagScribe;
-			productReference = REF009;
+			productReference = REF009 /* TagScribe.app */;
 			productType = "com.apple.product-type.application";
 		};
+/* End PBXNativeTarget section */
 
-		/* Config lists */
-		CFG001 = {
-			isa = XCConfigurationList;
-			buildConfigurations = ( CFG003, CFG004 );
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+/* Begin PBXProject section */
+		PRJ001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					TGT001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = CFG001 /* Build configuration list for PBXProject "TagScribe" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = GRP001;
+			packageReferences = (
+				PKGREF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			productRefGroup = GRP002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				TGT001 /* TagScribe */,
+			);
 		};
-		CFG002 = {
-			isa = XCConfigurationList;
-			buildConfigurations = ( CFG005, CFG006 );
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		RSR001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BLD007 /* Assets.xcassets in Resources */,
+				19F1D60A2F5BD6BE00122A34 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
+/* End PBXResourcesBuildPhase section */
 
-		/* Project-level configs */
-		CFG003 = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES; CLANG_ENABLE_MODULES = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_STRICT_OBJC_MSGSEND = YES; ENABLE_TESTABILITY = YES; GCC_OPTIMIZATION_LEVEL = 0; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
-		CFG004 = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES; CLANG_ENABLE_MODULES = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; ENABLE_NS_ASSERTIONS = NO; ENABLE_STRICT_OBJC_MSGSEND = YES; GCC_OPTIMIZATION_LEVEL = s; SWIFT_COMPILATION_MODE = wholemodule; }; name = Release; };
+/* Begin PBXSourcesBuildPhase section */
+		SRC001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BLD001 /* TagScribeApp.swift in Sources */,
+				BLD002 /* ContentView.swift in Sources */,
+				BLD003 /* Item.swift in Sources */,
+				BLD004 /* Category.swift in Sources */,
+				BLD005 /* AuthManager.swift in Sources */,
+				BLD006 /* APIClient.swift in Sources */,
+				BLD010 /* RootView.swift in Sources */,
+				BLD011 /* SignInView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
 
-		/* Target configs */
-		CFG005 = {
+/* Begin XCBuildConfiguration section */
+		CFG003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		CFG004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		CFG005 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -116,7 +250,10 @@
 				INFOPLIST_FILE = TagScribe/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks" );
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -126,7 +263,7 @@
 			};
 			name = Debug;
 		};
-		CFG006 = {
+		CFG006 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -139,7 +276,10 @@
 				INFOPLIST_FILE = TagScribe/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks" );
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -149,22 +289,52 @@
 			};
 			name = Release;
 		};
+/* End XCBuildConfiguration section */
 
-		PRJ001 = {
-			isa = PBXProject;
-			attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1500; LastUpgradeCheck = 1500; TargetAttributes = { TGT001 = { CreatedOnToolsVersion = 15.0; }; }; };
-			buildConfigurationList = CFG001;
-			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = ( en, Base );
-			mainGroup = GRP001;
-			packageReferences = ( PKGREF );
-			productRefGroup = GRP002;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = ( TGT001 );
+/* Begin XCConfigurationList section */
+		CFG001 /* Build configuration list for PBXProject "TagScribe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFG003 /* Debug */,
+				CFG004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
+		CFG002 /* Build configuration list for PBXNativeTarget "TagScribe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFG005 /* Debug */,
+				CFG006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		PKGREF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		PKGPROD /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PKGREF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		PKGPROD2 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PKGREF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = PRJ001;
+	rootObject = PRJ001 /* Project object */;
 }
