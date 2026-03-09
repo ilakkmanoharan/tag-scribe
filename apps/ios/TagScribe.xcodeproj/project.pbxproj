@@ -269,6 +269,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
+				EXECUTABLE_NAME = TagScribe;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TagScribe/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -297,6 +298,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
+				EXECUTABLE_NAME = TagScribe;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TagScribe/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
