@@ -48,6 +48,23 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		SCP001 /* Create GoogleService-Info.plist for CI */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Create GoogleService-Info.plist for CI";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "PLIST=\"${PROJECT_DIR}/GoogleService-Info.plist\"\nif [ -f \"$PLIST\" ]; then exit 0; fi\n# Create minimal plist for Xcode Cloud; real plist is gitignored\ncat > \"$PLIST\" << 'PLISTEOF'\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CLIENT_ID</key>\n\t<string>placeholder.apps.googleusercontent.com</string>\n\t<key>REVERSED_CLIENT_ID</key>\n\t<string>com.googleusercontent.apps.placeholder</string>\n\t<key>API_KEY</key>\n\t<string>placeholder</string>\n\t<key>GCM_SENDER_ID</key>\n\t<string>000000000000</string>\n\t<key>PLIST_VERSION</key>\n\t<string>1</string>\n\t<key>BUNDLE_ID</key>\n\t<string>app.tagscribe.ios</string>\n\t<key>PROJECT_ID</key>\n\t<string>placeholder</string>\n\t<key>STORAGE_BUCKET</key>\n\t<string>placeholder.appspot.com</string>\n\t<key>IS_ADS_ENABLED</key>\n\t<false/>\n\t<key>IS_ANALYTICS_ENABLED</key>\n\t<false/>\n\t<key>IS_APPINVITE_ENABLED</key>\n\t<false/>\n\t<key>IS_GCM_ENABLED</key>\n\t<false/>\n\t<key>IS_SIGNIN_ENABLED</key>\n\t<true/>\n</dict>\n</plist>\nPLISTEOF\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXGroup section */
 		GRP001 = {
 			isa = PBXGroup;
@@ -122,6 +139,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = CFG002 /* Build configuration list for PBXNativeTarget "TagScribe" */;
 			buildPhases = (
+				SCP001 /* Create GoogleService-Info.plist for CI */,
 				SRC001 /* Sources */,
 				FRM001 /* Frameworks */,
 				RSR001 /* Resources */,
