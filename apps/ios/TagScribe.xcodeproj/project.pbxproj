@@ -58,6 +58,7 @@
 			);
 			name = "Create GoogleService-Info.plist for CI";
 			outputPaths = (
+				"$(PROJECT_DIR)/GoogleService-Info.plist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
