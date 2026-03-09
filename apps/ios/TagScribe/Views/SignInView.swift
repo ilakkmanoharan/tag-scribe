@@ -87,6 +87,7 @@ struct SignInView: View {
                     .buttonStyle(.borderless)
                 }
             }
+            .accessibilityIdentifier("signInView")
             .navigationTitle(isSignUp ? "Sign up" : "Sign in")
             .onSubmit { submit() }
         }
