@@ -6,6 +6,9 @@ struct SignInView: View {
     @State private var isSignUp = false
     @State private var errorMessage: String?
     @State private var loading = false
+    @State private var showForgotPassword = false
+    @State private var showForgotPasswordResult = false
+    @State private var forgotPasswordResultMessage: String = ""
     @FocusState private var focusedField: Field?
 
     enum Field { case email, password }
@@ -44,6 +47,13 @@ struct SignInView: View {
                 Section {
                     emailField
                     passwordField
+                    if !isSignUp {
+                        Button("Forgot password?") {
+                            showForgotPassword = true
+                        }
+                        .buttonStyle(.borderless)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 } header: {
                     Text("Tag Scribe")
                 } footer: {
@@ -90,6 +100,52 @@ struct SignInView: View {
             .accessibilityIdentifier("signInView")
             .navigationTitle(isSignUp ? "Sign up" : "Sign in")
             .onSubmit { submit() }
+            .alert("Reset password", isPresented: $showForgotPassword) {
+                TextField("Email", text: $email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                Button("Cancel", role: .cancel) {
+                    showForgotPassword = false
+                }
+                Button("Send link") {
+                    sendForgotPassword()
+                }
+            } message: {
+                Text("Enter your email and we'll send a link to reset your password.")
+            }
+            .alert("Reset password", isPresented: $showForgotPasswordResult) {
+                Button("OK", role: .cancel) {
+                    showForgotPasswordResult = false
+                }
+            } message: {
+                Text(forgotPasswordResultMessage)
+            }
+        }
+    }
+
+    private func sendForgotPassword() {
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            forgotPasswordResultMessage = "Please enter your email."
+            showForgotPasswordResult = true
+            return
+        }
+        showForgotPassword = false
+        loading = true
+        Task {
+            do {
+                try await AuthManager.shared.sendPasswordReset(email: trimmed)
+                await MainActor.run {
+                    forgotPasswordResultMessage = "Check your email for a link to reset your password."
+                    showForgotPasswordResult = true
+                }
+            } catch {
+                await MainActor.run {
+                    forgotPasswordResultMessage = error.localizedDescription
+                    showForgotPasswordResult = true
+                }
+            }
+            await MainActor.run { loading = false }
         }
     }
 

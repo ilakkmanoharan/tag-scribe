@@ -41,4 +41,9 @@ final class AuthManager: ObservableObject {
         isSignedIn = false
         currentEmail = nil
     }
+
+    /// Sends a password reset email to the given address. Caller should show success/error.
+    func sendPasswordReset(email: String) async throws {
+        try await Auth.auth().sendPasswordReset(withEmail: email.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
 }

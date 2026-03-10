@@ -52,7 +52,10 @@ export default function SignInPage() {
           />
         </div>
         <div>
-          <label className="block text-sm text-[var(--muted)]">Password</label>
+          <div className="flex items-center justify-between">
+            <label className="block text-sm text-[var(--muted)]">Password</label>
+            <Link href="/forgot-password" className="text-sm text-[var(--accent)] hover:underline">Forgot password?</Link>
+          </div>
           <input
             type="password"
             value={password}

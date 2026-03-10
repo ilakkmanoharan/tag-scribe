@@ -16,6 +16,7 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   isFirebaseEnabled: boolean;
 };
 
@@ -78,6 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await firebaseSignOut(auth);
   }, []);
 
+  const sendPasswordReset = useCallback(async (email: string) => {
+    const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase not configured");
+    const { sendPasswordResetEmail } = await import("firebase/auth");
+    await sendPasswordResetEmail(auth, email.trim());
+  }, []);
+
   const value: AuthContextValue = {
     user,
     loading,
@@ -86,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    sendPasswordReset,
     isFirebaseEnabled,
   };
 
