@@ -20,6 +20,12 @@
 		BLD010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF010 /* RootView.swift */; };
 		BLD011 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF011 /* SignInView.swift */; };
 		BLD012 /* TagScribeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF012 /* TagScribeUITests.swift */; };
+		BLD013 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF014 /* ShareViewController.swift */; };
+		19F1D60B2F5BD6BE00122A35 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */; };
+		BLD016 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD /* FirebaseAuth */; };
+		BLD017 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD2 /* FirebaseCore */; };
+		BLD018 /* TagScribeShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = REF017 /* TagScribeShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BLD019 /* Social.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = REF019 /* Social.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +35,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = TGT001 /* TagScribe */;
 			remoteInfo = TagScribe;
+		};
+		PROXY002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = PRJ001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = TGT003 /* TagScribeShareExtension */;
+			remoteInfo = TagScribeShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -47,6 +60,12 @@
 		REF011 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		REF012 /* TagScribeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagScribeUITests.swift; sourceTree = "<group>"; };
 		REF013 /* TagScribeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TagScribeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		REF014 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		REF015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		REF016 /* TagScribeShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagScribeShareExtension.entitlements; sourceTree = "<group>"; };
+		REF017 /* TagScribeShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TagScribeShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		REF018 /* TagScribe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagScribe.entitlements; sourceTree = "<group>"; };
+		REF019 /* Social.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Social.framework; path = System/Library/Frameworks/Social.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,7 +85,31 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FRM003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BLD016 /* FirebaseAuth in Frameworks */,
+				BLD017 /* FirebaseCore in Frameworks */,
+				BLD019 /* Social.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EMBED001 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BLD018 /* TagScribeShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		SCP001 /* Create GoogleService-Info.plist for CI */ = {
@@ -94,6 +137,7 @@
 				GRP002 /* Products */,
 				GRP003 /* TagScribe */,
 				GRP008 /* TagScribeUITests */,
+				GRP009 /* TagScribeShareExtension */,
 			);
 			sourceTree = "<group>";
 		};
@@ -101,6 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				REF009 /* TagScribe.app */,
+				REF017 /* TagScribeShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -116,6 +161,7 @@
 				GRP006 /* Services */,
 				REF007 /* Info.plist */,
 				REF008 /* Assets.xcassets */,
+				REF018 /* TagScribe.entitlements */,
 			);
 			path = TagScribe;
 			sourceTree = "<group>";
@@ -162,6 +208,16 @@
 			path = TagScribeUITests;
 			sourceTree = "<group>";
 		};
+		GRP009 /* TagScribeShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				REF014 /* ShareViewController.swift */,
+				REF015 /* Info.plist */,
+				REF016 /* TagScribeShareExtension.entitlements */,
+			);
+			path = TagScribeShareExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -173,10 +229,12 @@
 				SRC001 /* Sources */,
 				FRM001 /* Frameworks */,
 				RSR001 /* Resources */,
+				EMBED001 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				DEP002 /* PBXTargetDependency */,
 			);
 			name = TagScribe;
 			packageProductDependencies = (
@@ -205,6 +263,27 @@
 			productReference = REF013 /* TagScribeUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		TGT003 /* TagScribeShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFG012 /* Build configuration list for PBXNativeTarget "TagScribeShareExtension" */;
+			buildPhases = (
+				SRC003 /* Sources */,
+				RSR003 /* Resources */,
+				FRM003 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TagScribeShareExtension;
+			packageProductDependencies = (
+				PKGPROD /* FirebaseAuth */,
+				PKGPROD2 /* FirebaseCore */,
+			);
+			productName = TagScribeShareExtension;
+			productReference = REF017 /* TagScribeShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -219,6 +298,9 @@
 						CreatedOnToolsVersion = 15.0;
 					};
 					TGT002 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					TGT003 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -241,6 +323,7 @@
 			targets = (
 				TGT001 /* TagScribe */,
 				TGT002 /* TagScribeUITests */,
+				TGT003 /* TagScribeShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -259,6 +342,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		RSR003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				19F1D60B2F5BD6BE00122A35 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -288,6 +379,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		SRC003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BLD013 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -295,6 +394,11 @@
 			isa = PBXTargetDependency;
 			target = TGT001 /* TagScribe */;
 			targetProxy = PROXY001 /* PBXContainerItemProxy */;
+		};
+		DEP002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = TGT003 /* TagScribeShareExtension */;
+			targetProxy = PROXY002 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -339,6 +443,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TagScribe/TagScribe.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -368,6 +473,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TagScribe/TagScribe.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -434,6 +540,58 @@
 			};
 			name = Release;
 		};
+		CFG010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TagScribeShareExtension/TagScribeShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TagScribeShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios.TagScribeShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CFG011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TagScribeShareExtension/TagScribeShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TagScribeShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios.TagScribeShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -460,6 +618,15 @@
 			buildConfigurations = (
 				CFG007 /* Debug */,
 				CFG008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CFG012 /* Build configuration list for PBXNativeTarget "TagScribeShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFG010 /* Debug */,
+				CFG011 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

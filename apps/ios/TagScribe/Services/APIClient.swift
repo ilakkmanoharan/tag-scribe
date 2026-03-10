@@ -61,6 +61,29 @@ final class APIClient {
         }
         return try decoder.decode([String].self, from: data)
     }
+
+    /// Create an item (e.g. link from Share Sheet). API: POST /api/items with JSON body.
+    func createItem(type: String, content: String, title: String? = nil, tags: [String] = [], categoryId: String? = "cat-inbox", source: String? = "social") async throws -> Item {
+        let url = URL(string: baseURL + "/api/items")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        var body: [String: Any] = ["type": type, "content": content]
+        if let t = title { body["title"] = t }
+        if !tags.isEmpty { body["tags"] = tags }
+        if let c = categoryId { body["categoryId"] = c }
+        if let s = source { body["source"] = s }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(Item.self, from: data)
+    }
 }
 
 enum APIError: Error {
