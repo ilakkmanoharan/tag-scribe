@@ -27,6 +27,14 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const normalizeUrl = useCallback((raw: string) => {
+    const value = raw.trim();
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    if (/^[^\s]+\.[^\s]+/.test(value)) return `https://${value}`;
+    return value;
+  }, []);
+
   useEffect(() => {
     setCategories(initialCategories);
   }, [initialCategories]);
@@ -43,12 +51,13 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLInputElement>) => {
       const text = e.clipboardData.getData("text").trim();
-      if (text && (text.startsWith("http://") || text.startsWith("https://"))) {
+      const normalized = normalizeUrl(text);
+      if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
         e.preventDefault();
-        setUrl(text);
+        setUrl(normalized);
       }
     },
-    []
+    [normalizeUrl]
   );
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -79,7 +88,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
     }
     const text = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text");
     if (text) {
-      const trimmed = text.trim();
+      const trimmed = normalizeUrl(text);
       if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
         if (trimmed.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) {
           setVideoUrl(trimmed);
@@ -88,7 +97,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
         }
       }
     }
-  }, [videoDataUrl, videoUrl]);
+  }, [normalizeUrl, videoDataUrl, videoUrl]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -153,10 +162,11 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const link = url.trim();
+    const link = normalizeUrl(url);
+    const normalizedVideoUrl = normalizeUrl(videoUrl);
     const hasLink = link && (link.startsWith("http://") || link.startsWith("https://"));
     const hasImages = imageDataUrls.length > 0;
-    const hasVideo = !!(videoUrl.trim() || videoDataUrl);
+    const hasVideo = !!(normalizedVideoUrl || videoDataUrl);
     const hasHighlight = !!highlight.trim();
     const titleVal = title.trim() || undefined;
 
@@ -164,8 +174,12 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
       setError("Add at least a link, a picture, a video, or some text.");
       return;
     }
-    if (hasLink && !link.startsWith("http://") && !link.startsWith("https://")) {
+    if (link && !hasLink) {
       setError("Link must start with http:// or https://");
+      return;
+    }
+    if (normalizedVideoUrl && !normalizedVideoUrl.startsWith("http://") && !normalizedVideoUrl.startsWith("https://")) {
+      setError("Video link must start with http:// or https://");
       return;
     }
     setSaving(true);
@@ -195,7 +209,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
         }
       }
       if (hasVideo) {
-        const videoContent = videoDataUrl || videoUrl.trim();
+        const videoContent = videoDataUrl || normalizedVideoUrl;
         const headers = { "Content-Type": "application/json", ...await getAuthHeaders() };
         const res = await fetch("/api/items", {
           method: "POST",
@@ -298,7 +312,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
           id="url"
           type="url"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => setUrl(normalizeUrl(e.target.value))}
           onPaste={handlePaste}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -351,7 +365,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
         <input
           type="url"
           value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
+          onChange={(e) => setVideoUrl(normalizeUrl(e.target.value))}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           placeholder="Paste or drop a video URL (e.g. https://...mp4)"
