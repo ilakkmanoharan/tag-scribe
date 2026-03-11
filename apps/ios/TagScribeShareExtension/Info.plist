@@ -19,14 +19,7 @@
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionActivationRule</key>
-		<dict>
-			<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
-			<integer>1</integer>
-			<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
-			<integer>1</integer>
-			<key>NSExtensionActivationSupportsText</key>
-			<true/>
-		</dict>
+		<string>SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $att, ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url" OR ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "public.plain-text").@count >= 1).@count >= 1</string>
 		<key>NSExtensionAttributes</key>
 		<dict>
 			<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
