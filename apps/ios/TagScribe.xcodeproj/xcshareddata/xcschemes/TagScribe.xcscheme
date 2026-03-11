@@ -3,23 +3,9 @@
    LastUpgradeVersion = "1500"
    version = "1.7">
    <BuildAction
-      parallelizeBuildables = "YES"
+      parallelizeBuildables = "NO"
       buildImplicitDependencies = "YES">
       <BuildActionEntries>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "TGT001"
-               BuildableName = "TagScribe.app"
-               BlueprintName = "TagScribe"
-               ReferencedContainer = "container:TagScribe.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
             buildForRunning = "YES"
@@ -31,6 +17,20 @@
                BlueprintIdentifier = "TGT003"
                BuildableName = "TagScribeShareExtension.appex"
                BlueprintName = "TagScribeShareExtension"
+               ReferencedContainer = "container:TagScribe.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "TGT001"
+               BuildableName = "TagScribe.app"
+               BlueprintName = "TagScribe"
                ReferencedContainer = "container:TagScribe.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
