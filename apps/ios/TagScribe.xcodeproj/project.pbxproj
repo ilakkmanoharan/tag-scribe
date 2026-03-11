@@ -358,7 +358,6 @@
 			);
 			name = "Create GoogleService-Info.plist for CI";
 			outputPaths = (
-				"$(PROJECT_DIR)/GoogleService-Info.plist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -373,6 +372,7 @@
 			);
 			name = "Create GoogleService-Info.plist for CI (Extension)";
 			outputPaths = (
+				"$(PROJECT_DIR)/GoogleService-Info.plist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
