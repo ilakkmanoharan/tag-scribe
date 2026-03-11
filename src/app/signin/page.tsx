@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function SignInPage() {
   const { signIn, isFirebaseEnabled } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("reset") === "success") {
+      setResetSuccess(true);
+      router.replace("/signin", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   if (!isFirebaseEnabled) {
     return (
@@ -39,6 +48,11 @@ export default function SignInPage() {
 
   return (
     <div className="mx-auto max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+      {resetSuccess && (
+        <p className="mb-4 rounded-lg border border-green-500/50 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
+          Password updated. You can sign in with your new password.
+        </p>
+      )}
       <h1 className="text-xl font-semibold text-[var(--text)]">Sign in</h1>
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>

@@ -42,6 +42,9 @@ export default function ForgotPasswordPage() {
         <p className="mt-2 text-sm text-[var(--muted)]">
           If an account exists for <strong>{email}</strong>, we’ve sent a link to reset your password.
         </p>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Not in your inbox? Check spam or junk, then try <Link href="/forgot-password" className="text-[var(--accent)] hover:underline">sending again</Link>.
+        </p>
         <Link href="/signin" className="mt-4 inline-block text-[var(--accent)] hover:underline">Back to Sign in</Link>
       </div>
     );
