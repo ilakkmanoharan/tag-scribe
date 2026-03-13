@@ -20,7 +20,6 @@
 		BLD009 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD2 /* FirebaseCore */; };
 		BLD010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF010 /* RootView.swift */; };
 		BLD011 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF011 /* SignInView.swift */; };
-		BLD012 /* TagScribeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF012 /* TagScribeUITests.swift */; };
 		BLD013 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF014 /* ShareViewController.swift */; };
 		BLD016 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD /* FirebaseAuth */; };
 		BLD017 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD2 /* FirebaseCore */; };
@@ -29,13 +28,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		PROXY001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = PRJ001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = TGT001;
-			remoteInfo = TagScribe;
-		};
 		PROXY002 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = PRJ001 /* Project object */;
@@ -60,7 +52,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		1963CFFA2F61ACD800E6757D /* TagScribeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TagScribeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		REF001 /* TagScribeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagScribeApp.swift; sourceTree = "<group>"; };
 		REF002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -73,7 +64,6 @@
 		REF009 /* TagScribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TagScribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		REF010 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		REF011 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
-		REF012 /* TagScribeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagScribeUITests.swift; sourceTree = "<group>"; };
 		REF014 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		REF015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		REF016 /* TagScribeShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagScribeShareExtension.entitlements; sourceTree = "<group>"; };
@@ -89,13 +79,6 @@
 			files = (
 				BLD008 /* FirebaseAuth in Frameworks */,
 				BLD009 /* FirebaseCore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		FRM002 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -126,7 +109,6 @@
 				19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */,
 				GRP002 /* Products */,
 				GRP003 /* TagScribe */,
-				GRP008 /* TagScribeUITests */,
 				GRP009 /* TagScribeShareExtension */,
 				1963CFF92F61ACD800E6757D /* Recovered References */,
 			);
@@ -137,7 +119,6 @@
 			children = (
 				REF009 /* TagScribe.app */,
 				REF017 /* TagScribeShareExtension.appex */,
-				1963CFFA2F61ACD800E6757D /* TagScribeUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -192,14 +173,6 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		GRP008 /* TagScribeUITests */ = {
-			isa = PBXGroup;
-			children = (
-				REF012 /* TagScribeUITests.swift */,
-			);
-			path = TagScribeUITests;
-			sourceTree = "<group>";
-		};
 		GRP009 /* TagScribeShareExtension */ = {
 			isa = PBXGroup;
 			children = (
@@ -237,24 +210,6 @@
 			productReference = REF009 /* TagScribe.app */;
 			productType = "com.apple.product-type.application";
 		};
-		TGT002 /* TagScribeUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = CFG009 /* Build configuration list for PBXNativeTarget "TagScribeUITests" */;
-			buildPhases = (
-				SRC002 /* Sources */,
-				RSR002 /* Resources */,
-				FRM002 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				DEP001 /* PBXTargetDependency */,
-			);
-			name = TagScribeUITests;
-			productName = TagScribeUITests;
-			productReference = 1963CFFA2F61ACD800E6757D /* TagScribeUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 		TGT003 /* TagScribeShareExtension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CFG012 /* Build configuration list for PBXNativeTarget "TagScribeShareExtension" */;
@@ -291,9 +246,6 @@
 					TGT001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
-					TGT002 = {
-						CreatedOnToolsVersion = 15.0;
-					};
 					TGT003 = {
 						CreatedOnToolsVersion = 15.0;
 					};
@@ -316,7 +268,6 @@
 			projectRoot = "";
 			targets = (
 				TGT001 /* TagScribe */,
-				TGT002 /* TagScribeUITests */,
 				TGT003 /* TagScribeShareExtension */,
 			);
 		};
@@ -329,13 +280,6 @@
 			files = (
 				BLD007 /* Assets.xcassets in Resources */,
 				19F1D60A2F5BD6BE00122A34 /* GoogleService-Info.plist in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		RSR002 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -411,14 +355,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		SRC002 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BLD012 /* TagScribeUITests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		SRC003 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -430,11 +366,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		DEP001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = TGT001 /* TagScribe */;
-			targetProxy = PROXY001 /* PBXContainerItemProxy */;
-		};
 		DEP002 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = TGT003 /* TagScribeShareExtension */;
@@ -540,50 +471,6 @@
 			};
 			name = Release;
 		};
-		CFG007 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LZUY99AX77;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios.TagScribeUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TagScribe.app/TagScribe";
-				USES_XCTRUNNER = NO;
-			};
-			name = Debug;
-		};
-		CFG008 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LZUY99AX77;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios.TagScribeUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TagScribe.app/TagScribe";
-				USES_XCTRUNNER = NO;
-			};
-			name = Release;
-		};
 		CFG010 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -655,15 +542,6 @@
 			buildConfigurations = (
 				CFG005 /* Debug */,
 				CFG006 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		CFG009 /* Build configuration list for PBXNativeTarget "TagScribeUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				CFG007 /* Debug */,
-				CFG008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
