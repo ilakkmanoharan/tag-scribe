@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "firebase:seed": "node private/firebase/seed-firestore.mjs",
-    "firebase:verify": "node private/firebase/verify-firestore.mjs"
+    "firebase:verify": "node private/firebase/verify-firestore.mjs",
+    "merge-accounts": "tsx scripts/merge-duplicate-accounts.ts",
+    "merge-accounts:execute": "tsx scripts/merge-duplicate-accounts.ts --execute"
   },
   "dependencies": {
     "better-sqlite3": "^11.6.0",
@@ -21,6 +23,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "tsx": "^4.19.2",
     "@types/better-sqlite3": "^7.6.11",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.9.0",

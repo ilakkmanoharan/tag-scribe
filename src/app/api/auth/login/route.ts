@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const token = signOurJwt({ sub: result.uid, email: result.email });
+  const token = signOurJwt({ sub: result.uid, email: result.email, provider: "email" });
   if (!token) {
     return NextResponse.json({ error: "Could not issue token" }, { status: 500 });
   }

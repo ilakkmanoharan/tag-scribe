@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       emailVerified: false,
     });
     await ensureUserDetails(user.uid, { email, provider: "email" });
-    const token = signOurJwt({ sub: user.uid, email });
+    const token = signOurJwt({ sub: user.uid, email, provider: "email" });
     if (!token) {
       return NextResponse.json({ error: "Could not issue token" }, { status: 500 });
     }

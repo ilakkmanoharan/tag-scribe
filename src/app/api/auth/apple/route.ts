@@ -80,12 +80,16 @@ export async function POST(request: Request) {
   }
   const uid = result.uid;
   await setAppleSubToUid(applePayload.sub, uid);
-  await ensureUserDetails(uid, {
-    email: applePayload.email?.trim() || `${applePayload.sub}@privaterelay.appleid.com`,
+  const appleEmail = applePayload.email?.trim() || `${applePayload.sub}@privaterelay.appleid.com`;
+  await ensureUserDetails(uid, { email: appleEmail, provider: "apple" });
+
+  // Omit email from JWT when it's a private relay so client shows "Signed in with Apple" instead
+  const isPrivateRelay = appleEmail.endsWith("@privaterelay.appleid.com");
+  const token = signOurJwt({
+    sub: uid,
+    email: isPrivateRelay ? undefined : applePayload.email?.trim(),
     provider: "apple",
   });
-
-  const token = signOurJwt({ sub: uid, email: applePayload.email });
   if (!token) {
     return NextResponse.json({ error: "Could not issue token" }, { status: 500 });
   }

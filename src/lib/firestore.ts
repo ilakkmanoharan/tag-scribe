@@ -316,6 +316,26 @@ const MERGED_INTO_UID = "mergedIntoUid";
 const MERGED_AT = "mergedAt";
 const MERGED_ACCOUNT_EMAIL = "mergedAccountEmail";
 
+/** List all user-detail docs for merge script. Returns primary uids only (skips merged/secondary). */
+export async function getAllUserDetailsForMerge(): Promise<
+  { uid: string; email: string; providers: string[]; merged: boolean }[]
+> {
+  const db = getAdminFirestore();
+  if (!db) return [];
+  const snap = await db.collection("users").get();
+  const out: { uid: string; email: string; providers: string[]; merged: boolean }[] = [];
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    const merged = data[MERGED] === true;
+    const email = typeof data.email === "string" ? data.email.trim() : "";
+    const providers = Array.isArray(data[USER_DETAILS_PROVIDERS])
+      ? (data[USER_DETAILS_PROVIDERS] as string[])
+      : [];
+    out.push({ uid: doc.id, email, providers, merged });
+  }
+  return out;
+}
+
 /** Resolve effective uid for data access (follow merge redirect). */
 export async function getEffectiveUid(tokenUid: string): Promise<string> {
   const db = getAdminFirestore();

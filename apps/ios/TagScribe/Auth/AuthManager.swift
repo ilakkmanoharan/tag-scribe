@@ -10,6 +10,7 @@ final class AuthManager: NSObject, ObservableObject {
     @Published private(set) var currentEmail: String?
 
     private let apiBaseURL = "https://tag-scribe.vercel.app"
+    private static let privateRelaySuffix = "@privaterelay.appleid.com"
 
     override private init() {
         super.init()
@@ -19,21 +20,41 @@ final class AuthManager: NSObject, ObservableObject {
     private func updateStateFromKeychain() {
         if let token = JWTKeychain.load() {
             isSignedIn = !token.isEmpty
-            currentEmail = decodeEmailFromJWT(token)
+            currentEmail = decodeJwtPayload(token)?.email
         } else {
             isSignedIn = false
             currentEmail = nil
         }
     }
 
-    /// Decode email from JWT payload (base64 middle part). Best-effort; used for display only.
-    private func decodeEmailFromJWT(_ token: String) -> String? {
+    /// Decode email and provider from JWT payload (base64 middle part). Best-effort; for display only.
+    private func decodeJwtPayload(_ token: String) -> (email: String?, provider: String?)? {
         let parts = token.split(separator: ".")
         guard parts.count >= 2 else { return nil }
         guard let data = Data(base64Encoded: String(parts[1]).base64Padding()) else { return nil }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let email = json["email"] as? String else { return nil }
-        return email
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        let email = json["email"] as? String
+        let provider = json["provider"] as? String
+        return (email, provider)
+    }
+
+    /// User-facing account label for Settings. Hides private relay / internal identifiers; shows e.g. "ilakkmanoharan@gmail.com (Apple Id)" or "Signed in with Apple".
+    var accountDisplayLabel: String {
+        guard let token = JWTKeychain.load(), !token.isEmpty,
+              let payload = decodeJwtPayload(token) else { return "Signed in with Apple" }
+        let email = payload.email?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isRelay = email?.lowercased().hasSuffix(Self.privateRelaySuffix) ?? true
+        if email?.isEmpty ?? true || isRelay {
+            return "Signed in with Apple"
+        }
+        let displayEmail = email ?? ""
+        if payload.provider == "apple" {
+            return "\(displayEmail) (Apple Id)"
+        }
+        if payload.provider == "email" {
+            return "\(displayEmail) (Email)"
+        }
+        return displayEmail.isEmpty ? "Signed in with Apple" : displayEmail
     }
 
     /// Returns the stored JWT for API Authorization header, or nil if not signed in.

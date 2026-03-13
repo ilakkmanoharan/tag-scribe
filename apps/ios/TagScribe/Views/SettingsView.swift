@@ -12,10 +12,8 @@ struct SettingsView: View {
     var body: some View {
         List {
             Section {
-                if let email = AuthManager.shared.currentEmail {
-                    Text(email)
-                        .font(.subheadline)
-                }
+                Text(AuthManager.shared.accountDisplayLabel)
+                    .font(.subheadline)
                 Button("Sign out") {
                     AuthManager.shared.signOut()
                 }
