@@ -141,6 +141,39 @@ final class APIClient {
         }
         return try decoder.decode(Category.self, from: data)
     }
+
+    /// Update category name. API: PATCH /api/categories/:id with { name: string }
+    func updateCategory(id: String, name: String) async throws -> Category {
+        let url = URL(string: baseURL + "/api/categories/\(id)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["name": name.trimmingCharacters(in: .whitespacesAndNewlines)])
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(Category.self, from: data)
+    }
+
+    /// Delete category. Items in the category move to Inbox. Inbox cannot be deleted. API: DELETE /api/categories/:id
+    func deleteCategory(id: String) async throws {
+        let url = URL(string: baseURL + "/api/categories/\(id)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        let (_, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 && http.statusCode != 204 {
+            throw APIError.server(http.statusCode)
+        }
+    }
 }
 
 enum APIError: Error {

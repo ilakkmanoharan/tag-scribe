@@ -1,7 +1,7 @@
 import Foundation
 
 /// Mirrors API type: see private/specifications/mobile-apps/API-CONTRACT.md
-struct Category: Codable, Identifiable {
+struct Category: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     var description: String?
