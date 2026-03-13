@@ -58,7 +58,7 @@ final class AuthManager: NSObject, ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(with: ["identityToken": identityToken])
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["identityToken": identityToken])
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
