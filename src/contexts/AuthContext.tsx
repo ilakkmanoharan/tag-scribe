@@ -69,7 +69,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const auth = getFirebaseAuth();
     if (!auth) throw new Error("Firebase not configured");
     const { createUserWithEmailAndPassword } = await import("firebase/auth");
-    await createUserWithEmailAndPassword(auth, email, password);
+    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+    const token = await userCred.user.getIdToken();
+    try {
+      await fetch("/api/user/details", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Non-fatal: user exists in Firebase Auth; Firestore details may sync later
+    }
   }, []);
 
   const signOut = useCallback(async () => {

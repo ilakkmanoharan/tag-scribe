@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAppleIdentityToken } from "@/lib/apple-auth";
 import { signOurJwt } from "@/lib/jwt";
 import { getAdminAuth } from "@/lib/firebase-admin";
-import { setAppleSubToUid } from "@/lib/firestore";
+import { setAppleSubToUid, ensureUserDetails } from "@/lib/firestore";
 import type { AppleTokenPayload } from "@/lib/apple-auth";
 
 function randomPassword(): string {
@@ -67,6 +67,10 @@ export async function POST(request: Request) {
   }
 
   await setAppleSubToUid(applePayload.sub, uid);
+  await ensureUserDetails(uid, {
+    email: applePayload.email?.trim() || `${applePayload.sub}@privaterelay.appleid.com`,
+    provider: "apple",
+  });
 
   const token = signOurJwt({ sub: uid, email: applePayload.email });
   if (!token) {

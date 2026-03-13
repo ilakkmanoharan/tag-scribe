@@ -65,6 +65,25 @@ export async function verifyIdToken(idToken: string): Promise<{ uid: string } | 
   }
 }
 
+/** Verify ID token and return uid + email (for user-details sync). */
+export async function verifyIdTokenWithEmail(
+  idToken: string
+): Promise<{ uid: string; email: string | null } | null> {
+  const auth = getAdminAuth();
+  if (!auth) return null;
+  try {
+    const decoded = await auth.verifyIdToken(idToken);
+    if (!decoded?.uid) return null;
+    const email =
+      typeof decoded.email === "string" && decoded.email.trim()
+        ? decoded.email.trim()
+        : null;
+    return { uid: decoded.uid, email };
+  } catch {
+    return null;
+  }
+}
+
 export function isFirebaseAdminConfigured(): boolean {
   return !!(
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&

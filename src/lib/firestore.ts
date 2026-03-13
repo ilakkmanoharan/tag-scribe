@@ -250,6 +250,44 @@ export async function ensureInboxCategory(uid: string): Promise<void> {
 
 const APPLE_UID_COLLECTION = "apple_uid_mapping";
 
+const USER_DETAILS_PROVIDERS = "providers";
+
+/** Ensure users/{uid} document exists with email and provider; merge provider into existing. */
+export async function ensureUserDetails(
+  uid: string,
+  params: { email: string; provider: "email" | "apple" }
+): Promise<void> {
+  const db = getAdminFirestore();
+  if (!db) return;
+  const ref = db.collection("users").doc(uid);
+  const existing = await ref.get();
+  const now = new Date().toISOString();
+  if (!existing.exists) {
+    await ref.set({
+      email: params.email,
+      [USER_DETAILS_PROVIDERS]: [params.provider],
+      createdAt: now,
+      updatedAt: now,
+    });
+    return;
+  }
+  const data = existing.data() ?? {};
+  const providers: string[] = Array.isArray(data[USER_DETAILS_PROVIDERS])
+    ? (data[USER_DETAILS_PROVIDERS] as string[])
+    : [];
+  if (!providers.includes(params.provider)) {
+    providers.push(params.provider);
+  }
+  await ref.set(
+    {
+      email: params.email,
+      [USER_DETAILS_PROVIDERS]: providers,
+      updatedAt: now,
+    },
+    { merge: true }
+  );
+}
+
 /** Save Apple sub -> Firebase uid for server-to-server notification handling. */
 export async function setAppleSubToUid(appleSub: string, firebaseUid: string): Promise<void> {
   const db = getAdminFirestore();
