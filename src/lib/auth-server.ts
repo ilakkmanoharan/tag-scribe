@@ -1,10 +1,12 @@
 /**
  * Server-side auth: get uid from request.
  * Accepts either Firebase ID token (web) or our JWT (iOS).
+ * Returns effective uid (follows merge redirect) for data access.
  */
 
 import { verifyIdToken, isFirebaseAdminConfigured } from "./firebase-admin";
 import { verifyOurJwt, isOurJwtConfigured } from "./jwt";
+import { getEffectiveUid } from "./firestore";
 
 export { isFirebaseAdminConfigured };
 
@@ -28,11 +30,19 @@ export async function getUidFromRequest(request: Request): Promise<string | null
   return null;
 }
 
-/** When auth is configured (Firebase or our JWT), returns 401 if no valid uid. Otherwise returns null (use SQLite). */
+/** Resolve token uid to effective uid (follows mergedIntoUid redirect). Use for all data access. */
+export async function getEffectiveUidFromRequest(request: Request): Promise<string | null> {
+  const uid = await getUidFromRequest(request);
+  if (!uid) return null;
+  return getEffectiveUid(uid);
+}
+
+/** When auth is configured, returns effective uid for data access (401 if no valid token). */
 export async function requireUidOrNull(request: Request): Promise<{ uid: string } | { uid: null; status: 401 } | { uid: null; status: null }> {
   const hasAuth = isFirebaseAdminConfigured() || isOurJwtConfigured();
   if (!hasAuth) return { uid: null, status: null };
   const uid = await getUidFromRequest(request);
-  if (uid) return { uid };
-  return { uid: null, status: 401 };
+  if (!uid) return { uid: null, status: 401 };
+  const effectiveUid = await getEffectiveUid(uid);
+  return { uid: effectiveUid };
 }

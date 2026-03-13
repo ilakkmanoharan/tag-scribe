@@ -4,6 +4,14 @@ import AuthenticationServices
 struct SignInView: View {
     @State private var errorMessage: String?
     @State private var loading = false
+    @State private var email = ""
+    @State private var password = ""
+    @State private var emailPasswordLoading = false
+    @State private var isSignUp = false
+    @State private var forgotPasswordEmail = ""
+    @State private var showForgotPassword = false
+    @State private var forgotPasswordLink: URL?
+    @State private var showForgotSuccess = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +24,29 @@ struct SignInView: View {
                     Text("Sign in with Apple to use your library on this device and in the Share Sheet. Your account is the same as on the web.")
                 }
 
+                Section {
+                    TextField("Email", text: $email)
+                        .textContentType(.emailAddress)
+                        .autocapitalization(.none)
+                    SecureField("Password", text: $password)
+                        .textContentType(isSignUp ? .newPassword : .password)
+                    Button(emailPasswordLoading ? "…" : (isSignUp ? "Sign up" : "Login")) {
+                        Task { await submitEmailPassword() }
+                    }
+                    .disabled(email.isEmpty || password.isEmpty || emailPasswordLoading)
+                    if isSignUp {
+                        Button("Already have an account? Login") { isSignUp = false }
+                    } else {
+                        Button("No account? Sign up") { isSignUp = true }
+                    }
+                    Button("Forgot password?") {
+                        forgotPasswordEmail = email
+                        showForgotPassword = true
+                    }
+                } header: {
+                    Text("Or with email")
+                }
+
                 if let err = errorMessage {
                     Section {
                         Text(err)
@@ -26,6 +57,72 @@ struct SignInView: View {
             }
             .accessibilityIdentifier("signInView")
             .navigationTitle("Sign in")
+            .sheet(isPresented: $showForgotPassword) {
+                forgotPasswordSheet
+            }
+            .onOpenURL { url in
+                if showForgotSuccess { showForgotSuccess = false }
+            }
+        }
+    }
+
+    private var forgotPasswordSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Email", text: $forgotPasswordEmail)
+                        .textContentType(.emailAddress)
+                        .autocapitalization(.none)
+                    Button("Send reset link") {
+                        Task { await requestForgotPassword() }
+                    }
+                    .disabled(forgotPasswordEmail.isEmpty)
+                } header: {
+                    Text("Reset password")
+                } footer: {
+                    if showForgotSuccess {
+                        Text("If an account exists, a reset link was sent. Open the link in Safari to set a new password.")
+                    }
+                }
+            }
+            .navigationTitle("Forgot password")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { showForgotPassword = false }
+                }
+            }
+        }
+    }
+
+    private func submitEmailPassword() async {
+        errorMessage = nil
+        emailPasswordLoading = true
+        defer { emailPasswordLoading = false }
+        do {
+            if isSignUp {
+                try await AuthManager.shared.signUp(email: email, password: password)
+            } else {
+                try await AuthManager.shared.login(email: email, password: password)
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func requestForgotPassword() async {
+        do {
+            let link = try await AuthManager.shared.forgotPassword(email: forgotPasswordEmail)
+            await MainActor.run {
+                showForgotSuccess = true
+                UIApplication.shared.open(link)
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 }

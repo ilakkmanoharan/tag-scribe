@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import * as firestore from "@/lib/firestore";
-import { getUidFromRequest, isFirebaseAdminConfigured } from "@/lib/auth-server";
+import { getEffectiveUidFromRequest, isFirebaseAdminConfigured } from "@/lib/auth-server";
 import { getItemImageSignedUrl } from "@/lib/storage-server";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function GET(
     const { id } = await params;
 
     if (isFirebaseAdminConfigured()) {
-      const uid = await getUidFromRequest(request);
+      const uid = await getEffectiveUidFromRequest(request);
       if (!uid) return NextResponse.json({ error: "Not found" }, { status: 404 });
       const item = await firestore.getItemById(uid, id);
       if (!item || item.type !== "image") {

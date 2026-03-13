@@ -31,7 +31,12 @@ export default function SignUpPage() {
       router.push("/");
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Sign up failed");
+      const msg = err instanceof Error ? err.message : "Sign up failed";
+      setError(
+        msg.includes("email-already-in-use") || msg.includes("already in use")
+          ? "User already exists, please Login"
+          : msg
+      );
     } finally {
       setLoading(false);
     }

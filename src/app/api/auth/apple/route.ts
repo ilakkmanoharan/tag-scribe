@@ -13,7 +13,10 @@ function randomPassword(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function getOrCreateFirebaseUserFromApple(payload: AppleTokenPayload): Promise<string | null> {
+/** Returns uid if new or existing; "EMAIL_EXISTS" if existing email (caller should return 409). */
+async function getOrCreateFirebaseUserFromApple(
+  payload: AppleTokenPayload
+): Promise<{ uid: string } | { emailExists: true } | null> {
   const auth = getAdminAuth();
   if (!auth) return null;
 
@@ -21,7 +24,7 @@ async function getOrCreateFirebaseUserFromApple(payload: AppleTokenPayload): Pro
 
   try {
     const existing = await auth.getUserByEmail(email);
-    return existing.uid;
+    return { emailExists: true }; // Do not auto-link; require "User already exists, please Login"
   } catch {
     // User does not exist
   }
@@ -32,7 +35,7 @@ async function getOrCreateFirebaseUserFromApple(payload: AppleTokenPayload): Pro
       emailVerified: true,
       password: randomPassword(),
     });
-    return user.uid;
+    return { uid: user.uid };
   } catch (e) {
     console.error("Firebase createUser (Apple) failed:", e);
     return null;
@@ -61,11 +64,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or expired Apple token" }, { status: 401 });
   }
 
-  const uid = await getOrCreateFirebaseUserFromApple(applePayload);
-  if (!uid) {
+  const result = await getOrCreateFirebaseUserFromApple(applePayload);
+  if (!result) {
     return NextResponse.json({ error: "Could not create or find user" }, { status: 500 });
   }
+  if ("emailExists" in result && result.emailExists) {
+    return NextResponse.json(
+      { error: "User already exists, please Login" },
+      { status: 409 }
+    );
+  }
 
+  const uid = result.uid;
   await setAppleSubToUid(applePayload.sub, uid);
   await ensureUserDetails(uid, {
     email: applePayload.email?.trim() || `${applePayload.sub}@privaterelay.appleid.com`,

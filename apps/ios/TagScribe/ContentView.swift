@@ -4,17 +4,20 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         TabView {
-            tab(NavigationStack { LibraryView().toolbar { signOutToolbar } }, title: "Library", systemImage: "book.pages")
-            tab(NavigationStack { ArchiveView().toolbar { signOutToolbar } }, title: "Archive", systemImage: "archivebox")
-            tab(NavigationStack { CategoriesView().toolbar { signOutToolbar } }, title: "Categories", systemImage: "folder")
-            tab(NavigationStack { TagsView().toolbar { signOutToolbar } }, title: "Tags", systemImage: "tag")
-            tab(NavigationStack { AddView().toolbar { signOutToolbar } }, title: "Add", systemImage: "plus.circle")
+            tab(NavigationStack { LibraryView().toolbar { toolbarContent } }, title: "Library", systemImage: "book.pages")
+            tab(NavigationStack { ArchiveView().toolbar { toolbarContent } }, title: "Archive", systemImage: "archivebox")
+            tab(NavigationStack { CategoriesView().toolbar { toolbarContent } }, title: "Categories", systemImage: "folder")
+            tab(NavigationStack { TagsView().toolbar { toolbarContent } }, title: "Tags", systemImage: "tag")
+            tab(NavigationStack { AddView().toolbar { toolbarContent } }, title: "Add", systemImage: "plus.circle")
+            tab(NavigationStack { SettingsView() }, title: "Settings", systemImage: "gearshape")
         }
     }
 
-    private var signOutToolbar: some ToolbarContent {
+    private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button("Sign out") { AuthManager.shared.signOut() }
+            NavigationLink(destination: SettingsView()) {
+                Image(systemName: "gearshape")
+            }
         }
     }
 

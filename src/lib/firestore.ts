@@ -310,3 +310,107 @@ export async function deleteAppleSubMapping(appleSub: string): Promise<void> {
   if (!db) return;
   await db.collection(APPLE_UID_COLLECTION).doc(appleSub).delete();
 }
+
+const MERGED = "merged";
+const MERGED_INTO_UID = "mergedIntoUid";
+const MERGED_AT = "mergedAt";
+const MERGED_ACCOUNT_EMAIL = "mergedAccountEmail";
+
+/** Resolve effective uid for data access (follow merge redirect). */
+export async function getEffectiveUid(tokenUid: string): Promise<string> {
+  const db = getAdminFirestore();
+  if (!db) return tokenUid;
+  const ref = db.collection("users").doc(tokenUid);
+  const doc = await ref.get();
+  if (!doc.exists) return tokenUid;
+  const data = doc.data() ?? {};
+  if (data[MERGED] === true && typeof data[MERGED_INTO_UID] === "string") {
+    return data[MERGED_INTO_UID] as string;
+  }
+  return tokenUid;
+}
+
+/** Set merge redirect on secondary account (after data migrated). */
+export async function setMergedInto(
+  secondaryUid: string,
+  primaryUid: string,
+  primaryEmail: string
+): Promise<void> {
+  const db = getAdminFirestore();
+  if (!db) return;
+  const now = new Date().toISOString();
+  await db
+    .collection("users")
+    .doc(secondaryUid)
+    .set(
+      {
+        [MERGED]: true,
+        [MERGED_INTO_UID]: primaryUid,
+        [MERGED_AT]: now,
+        [MERGED_ACCOUNT_EMAIL]: primaryEmail,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+}
+
+/** Delete all user data (categories, items, user doc) for the given uid. */
+export async function deleteUserData(uid: string): Promise<void> {
+  const db = getAdminFirestore();
+  if (!db) return;
+  const userRef = db.collection("users").doc(uid);
+  const catCol = userRef.collection("categories");
+  const itemCol = userRef.collection("items");
+
+  const catSnap = await catCol.get();
+  for (const d of catSnap.docs) await d.ref.delete();
+  const itemSnap = await itemCol.get();
+  for (const d of itemSnap.docs) await d.ref.delete();
+  await userRef.delete();
+}
+
+/** Copy all categories and items from fromUid into toUid (merge; ids prefixed to avoid collisions). */
+export async function mergeUserDataInto(fromUid: string, toUid: string): Promise<void> {
+  const db = getAdminFirestore();
+  if (!db) throw new Error("Firestore not configured");
+  const prefix = "merge-" + Date.now() + "-";
+  const catColFrom = db.collection("users").doc(fromUid).collection("categories");
+  const catColTo = db.collection("users").doc(toUid).collection("categories");
+  const itemColFrom = db.collection("users").doc(fromUid).collection("items");
+  const itemColTo = db.collection("users").doc(toUid).collection("items");
+
+  const catSnap = await catColFrom.get();
+  const categoryIdMap: Record<string, string> = { "cat-inbox": "cat-inbox" }; // oldId -> newId
+  await ensureInboxCategory(toUid);
+  for (const d of catSnap.docs) {
+    const oldId = d.id;
+    if (oldId === "cat-inbox") continue; // target already has inbox
+    const newId = prefix + "cat-" + oldId;
+    categoryIdMap[oldId] = newId;
+    const data = d.data();
+    await catColTo.doc(newId).set({
+      ...data,
+      name: data.name ?? "",
+      description: data.description ?? null,
+      parentId: data.parentId ? categoryIdMap[data.parentId as string] ?? "cat-inbox" : null,
+      order: data.order ?? 0,
+      createdAt: data.createdAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? new Date().toISOString(),
+    });
+  }
+
+  const itemSnap = await itemColFrom.get();
+  for (const d of itemSnap.docs) {
+    const newId = prefix + d.id;
+    const data = d.data();
+    const categoryId = (data.categoryId as string) || null;
+    const mappedCategoryId = categoryId ? categoryIdMap[categoryId] ?? "cat-inbox" : null;
+    await itemColTo.doc(newId).set({
+      ...data,
+      categoryId: mappedCategoryId,
+      createdAt: data.createdAt ?? new Date().toISOString(),
+      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      archivedAt: data.archivedAt ?? null,
+    });
+  }
+}

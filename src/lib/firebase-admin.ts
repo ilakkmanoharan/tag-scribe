@@ -84,6 +84,17 @@ export async function verifyIdTokenWithEmail(
   }
 }
 
+/** Generate password reset link for email (for API / iOS; client opens link). */
+export async function generatePasswordResetLink(email: string): Promise<string | null> {
+  const auth = getAdminAuth();
+  if (!auth) return null;
+  try {
+    return await auth.generatePasswordResetLink(email.trim());
+  } catch {
+    return null;
+  }
+}
+
 export function isFirebaseAdminConfigured(): boolean {
   return !!(
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&

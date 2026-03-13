@@ -66,6 +66,9 @@ final class AuthManager: NSObject, ObservableObject {
         if http.statusCode == 401 {
             throw AuthError.invalidAppleToken
         }
+        if http.statusCode == 409 {
+            throw AuthError.userAlreadyExists
+        }
         if http.statusCode != 200 {
             throw AuthError.serverError(http.statusCode)
         }
@@ -83,22 +86,121 @@ final class AuthManager: NSObject, ObservableObject {
         isSignedIn = false
         currentEmail = nil
     }
+
+    /// Login with email + password via API. Saves returned JWT.
+    func login(email: String, password: String) async throws {
+        let url = URL(string: apiBaseURL + "/api/auth/login")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        if http.statusCode == 401 {
+            throw AuthError.invalidEmailPassword
+        }
+        if http.statusCode != 200 {
+            throw AuthError.serverError(http.statusCode)
+        }
+        struct LoginResponse: Decodable { let token: String }
+        let decoded = try JSONDecoder().decode(LoginResponse.self, from: data)
+        guard JWTKeychain.save(decoded.token) else { throw AuthError.couldNotSaveToken }
+        await MainActor.run { updateStateFromKeychain() }
+    }
+
+    /// Sign up with email + password via API. 409 = User already exists, please Login.
+    func signUp(email: String, password: String) async throws {
+        let url = URL(string: apiBaseURL + "/api/auth/signup")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        if http.statusCode == 409 {
+            throw AuthError.userAlreadyExists
+        }
+        if http.statusCode != 200 {
+            throw AuthError.serverError(http.statusCode)
+        }
+        struct SignUpResponse: Decodable { let token: String }
+        let decoded = try JSONDecoder().decode(SignUpResponse.self, from: data)
+        guard JWTKeychain.save(decoded.token) else { throw AuthError.couldNotSaveToken }
+        await MainActor.run { updateStateFromKeychain() }
+    }
+
+    /// Forgot password: get reset link from API, open in Safari.
+    func forgotPassword(email: String) async throws -> URL {
+        let url = URL(string: apiBaseURL + "/api/auth/forgot-password")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines)])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        if http.statusCode != 200 {
+            throw AuthError.serverError(http.statusCode)
+        }
+        struct ForgotResponse: Decodable { let link: String }
+        let decoded = try JSONDecoder().decode(ForgotResponse.self, from: data)
+        guard let linkURL = URL(string: decoded.link) else { throw AuthError.networkError }
+        return linkURL
+    }
+
+    /// Merge current account with email/password account. Requires valid JWT.
+    func mergeAccounts(email: String, password: String) async throws {
+        guard let token = JWTKeychain.load(), !token.isEmpty else { throw AuthError.invalidEmailPassword }
+        let url = URL(string: apiBaseURL + "/api/auth/merge-accounts")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        if http.statusCode == 401 {
+            throw AuthError.invalidEmailPassword
+        }
+        if http.statusCode != 200 {
+            throw AuthError.serverError(http.statusCode)
+        }
+    }
+
+    /// Delete account via API. Call signOut() after success.
+    func deleteAccount() async throws {
+        guard let token = JWTKeychain.load(), !token.isEmpty else { throw AuthError.unauthorized }
+        let url = URL(string: apiBaseURL + "/api/auth/delete-account")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        if http.statusCode != 200 {
+            throw AuthError.serverError(http.statusCode)
+        }
+    }
 }
 
 enum AuthError: LocalizedError {
     case invalidAppleCredential
     case invalidAppleToken
+    case invalidEmailPassword
     case networkError
     case serverError(Int)
     case couldNotSaveToken
+    case userAlreadyExists
+    case unauthorized
 
     var errorDescription: String? {
         switch self {
         case .invalidAppleCredential: return "Invalid Sign in with Apple credential."
         case .invalidAppleToken: return "Apple sign-in was not recognized. Try again."
+        case .invalidEmailPassword: return "Invalid email or password."
         case .networkError: return "Network error. Check your connection."
         case .serverError(let code): return "Server error (\(code)). Try again later."
         case .couldNotSaveToken: return "Could not save sign-in. Try again."
+        case .userAlreadyExists: return "User already exists, please Login"
+        case .unauthorized: return "Please sign in first."
         }
     }
 }
