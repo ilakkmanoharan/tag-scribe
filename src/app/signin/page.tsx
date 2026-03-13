@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function SignInPage() {
+function SignInForm() {
   const { signIn, isFirebaseEnabled } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,5 +91,17 @@ export default function SignInPage() {
         No account? <Link href="/signup" className="text-[var(--accent)] hover:underline">Sign up</Link>
       </p>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+        <p className="text-[var(--muted)]">Loading…</p>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }
