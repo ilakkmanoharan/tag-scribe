@@ -1,10 +1,17 @@
 import SwiftUI
 
-/// Library tab: all saved items. Shows empty state when no content.
+/// Library tab: all saved items. Expandable rows with link, tags, Add tag, Archive, Move, Delete.
 struct LibraryView: View {
     @State private var items: [Item] = []
+    @State private var categories: [Category] = []
+    @State private var existingTags: [String] = []
     @State private var errorMessage: String?
     @State private var loading = true
+
+    private func categoryName(for id: String?) -> String? {
+        guard let id = id else { return nil }
+        return categories.first(where: { $0.id == id })?.name
+    }
 
     var body: some View {
         Group {
@@ -33,15 +40,16 @@ struct LibraryView: View {
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(items) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title ?? String(item.content.prefix(60)))
-                            .lineLimit(1)
-                        if !item.tags.isEmpty {
-                            Text(item.tags.joined(separator: ", "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                List {
+                    ForEach(items) { item in
+                        LibraryItemRow(
+                            item: item,
+                            categoryName: categoryName(for: item.categoryId),
+                            existingTags: existingTags,
+                            categories: categories,
+                            onUpdated: { await load() },
+                            onDeleted: { Task { await load() } }
+                        )
                     }
                 }
             }
@@ -56,7 +64,12 @@ struct LibraryView: View {
         errorMessage = nil
         defer { loading = false }
         do {
-            items = try await APIClient.shared.getItems()
+            async let itemsTask = APIClient.shared.getItems()
+            async let categoriesTask = APIClient.shared.getCategories()
+            async let tagsTask = APIClient.shared.getTags()
+            items = try await itemsTask
+            categories = try await categoriesTask
+            existingTags = try await tagsTask
         } catch APIError.unauthorized {
             errorMessage = "Not signed in"
         } catch {

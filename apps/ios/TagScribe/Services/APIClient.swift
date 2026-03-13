@@ -62,8 +62,8 @@ final class APIClient {
         return try decoder.decode([String].self, from: data)
     }
 
-    /// Create an item (e.g. link from Share Sheet). API: POST /api/items with JSON body.
-    func createItem(type: String, content: String, title: String? = nil, tags: [String] = [], categoryId: String? = "cat-inbox", source: String? = "social") async throws -> Item {
+    /// Create an item. API: POST /api/items with JSON body.
+    func createItem(type: String, content: String, title: String? = nil, highlight: String? = nil, caption: String? = nil, tags: [String] = [], categoryId: String? = "cat-inbox", source: String? = "social") async throws -> Item {
         let url = URL(string: baseURL + "/api/items")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -71,8 +71,10 @@ final class APIClient {
         for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
         var body: [String: Any] = ["type": type, "content": content]
         if let t = title { body["title"] = t }
+        if let h = highlight { body["highlight"] = h }
+        if let c = caption { body["caption"] = c }
         if !tags.isEmpty { body["tags"] = tags }
-        if let c = categoryId { body["categoryId"] = c }
+        if let cid = categoryId { body["categoryId"] = cid }
         if let s = source { body["source"] = s }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await session.data(for: request)
@@ -83,6 +85,61 @@ final class APIClient {
             throw APIError.server(http.statusCode)
         }
         return try decoder.decode(Item.self, from: data)
+    }
+
+    /// Update item: archive, category, or tags. API: PATCH /api/items/:id
+    func updateItem(id: String, archived: Bool? = nil, categoryId: String? = nil, tags: [String]? = nil) async throws -> Item {
+        let url = URL(string: baseURL + "/api/items/\(id)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        var body: [String: Any] = [:]
+        if let a = archived { body["archived"] = a }
+        if let c = categoryId { body["categoryId"] = c }
+        if let t = tags { body["tags"] = t }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(Item.self, from: data)
+    }
+
+    /// Delete item. API: DELETE /api/items/:id
+    func deleteItem(id: String) async throws {
+        let url = URL(string: baseURL + "/api/items/\(id)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        let (_, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 && http.statusCode != 204 {
+            throw APIError.server(http.statusCode)
+        }
+    }
+
+    /// Create category. API: POST /api/categories with { name: string }
+    func createCategory(name: String) async throws -> Category {
+        let url = URL(string: baseURL + "/api/categories")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["name": name.trimmingCharacters(in: .whitespacesAndNewlines)])
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(Category.self, from: data)
     }
 }
 

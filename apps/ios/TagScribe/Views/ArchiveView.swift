@@ -3,8 +3,15 @@ import SwiftUI
 /// Archive tab: archived items. Shows empty state when none.
 struct ArchiveView: View {
     @State private var items: [Item] = []
+    @State private var categories: [Category] = []
+    @State private var existingTags: [String] = []
     @State private var errorMessage: String?
     @State private var loading = true
+
+    private func categoryName(for id: String?) -> String? {
+        guard let id = id else { return nil }
+        return categories.first(where: { $0.id == id })?.name
+    }
 
     var body: some View {
         Group {
@@ -30,15 +37,17 @@ struct ArchiveView: View {
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(items) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title ?? String(item.content.prefix(60)))
-                            .lineLimit(1)
-                        if !item.tags.isEmpty {
-                            Text(item.tags.joined(separator: ", "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                List {
+                    ForEach(items) { item in
+                        LibraryItemRow(
+                            item: item,
+                            categoryName: categoryName(for: item.categoryId),
+                            existingTags: existingTags,
+                            categories: categories,
+                            isArchived: true,
+                            onUpdated: { await load() },
+                            onDeleted: { Task { await load() } }
+                        )
                     }
                 }
             }
@@ -53,7 +62,12 @@ struct ArchiveView: View {
         errorMessage = nil
         defer { loading = false }
         do {
-            items = try await APIClient.shared.getItems(archived: true)
+            async let itemsTask = APIClient.shared.getItems(archived: true)
+            async let categoriesTask = APIClient.shared.getCategories()
+            async let tagsTask = APIClient.shared.getTags()
+            items = try await itemsTask
+            categories = try await categoriesTask
+            existingTags = try await tagsTask
         } catch APIError.unauthorized {
             errorMessage = "Not signed in"
         } catch {

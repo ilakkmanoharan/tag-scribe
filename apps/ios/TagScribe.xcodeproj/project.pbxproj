@@ -28,6 +28,7 @@
 		BLD032 /* CategoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF032 /* CategoriesView.swift */; };
 		BLD033 /* TagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF033 /* TagsView.swift */; };
 		BLD034 /* AddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF034 /* AddView.swift */; };
+		BLD035 /* LibraryItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF035 /* LibraryItemRow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 		REF032 /* CategoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesView.swift; sourceTree = "<group>"; };
 		REF033 /* TagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsView.swift; sourceTree = "<group>"; };
 		REF034 /* AddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddView.swift; sourceTree = "<group>"; };
+		REF035 /* LibraryItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemRow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,6 +182,7 @@
 				REF032 /* CategoriesView.swift */,
 				REF033 /* TagsView.swift */,
 				REF034 /* AddView.swift */,
+				REF035 /* LibraryItemRow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -350,6 +353,7 @@
 				BLD032 /* CategoriesView.swift in Sources */,
 				BLD033 /* TagsView.swift in Sources */,
 				BLD034 /* AddView.swift in Sources */,
+				BLD035 /* LibraryItemRow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
