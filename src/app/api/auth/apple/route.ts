@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAppleIdentityToken } from "@/lib/apple-auth";
 import { signOurJwt } from "@/lib/jwt";
 import { getAdminAuth } from "@/lib/firebase-admin";
+import { setAppleSubToUid } from "@/lib/firestore";
 import type { AppleTokenPayload } from "@/lib/apple-auth";
 
 function randomPassword(): string {
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
   if (!uid) {
     return NextResponse.json({ error: "Could not create or find user" }, { status: 500 });
   }
+
+  await setAppleSubToUid(applePayload.sub, uid);
 
   const token = signOurJwt({ sub: uid, email: applePayload.email });
   if (!token) {

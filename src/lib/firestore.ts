@@ -247,3 +247,28 @@ export async function ensureInboxCategory(uid: string): Promise<void> {
     order: 0,
   });
 }
+
+const APPLE_UID_COLLECTION = "apple_uid_mapping";
+
+/** Save Apple sub -> Firebase uid for server-to-server notification handling. */
+export async function setAppleSubToUid(appleSub: string, firebaseUid: string): Promise<void> {
+  const db = getAdminFirestore();
+  if (!db) return;
+  await db.collection(APPLE_UID_COLLECTION).doc(appleSub).set({ firebaseUid });
+}
+
+/** Get Firebase uid for an Apple sub (for notifications). */
+export async function getUidByAppleSub(appleSub: string): Promise<string | null> {
+  const db = getAdminFirestore();
+  if (!db) return null;
+  const doc = await db.collection(APPLE_UID_COLLECTION).doc(appleSub).get();
+  const data = doc.data();
+  return (data?.firebaseUid as string) ?? null;
+}
+
+/** Remove Apple sub mapping (after user delete). */
+export async function deleteAppleSubMapping(appleSub: string): Promise<void> {
+  const db = getAdminFirestore();
+  if (!db) return;
+  await db.collection(APPLE_UID_COLLECTION).doc(appleSub).delete();
+}
