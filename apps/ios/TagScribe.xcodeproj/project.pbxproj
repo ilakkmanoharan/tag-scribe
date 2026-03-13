@@ -23,6 +23,11 @@
 		BLD013 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF014 /* ShareViewController.swift */; };
 		BLD018 /* TagScribeShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = REF017 /* TagScribeShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BLD019 /* Social.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = REF019 /* Social.framework */; };
+		BLD030 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF030 /* LibraryView.swift */; };
+		BLD031 /* ArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF031 /* ArchiveView.swift */; };
+		BLD032 /* CategoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF032 /* CategoriesView.swift */; };
+		BLD033 /* TagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF033 /* TagsView.swift */; };
+		BLD034 /* AddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF034 /* AddView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +74,11 @@
 		REF017 /* TagScribeShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TagScribeShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		REF018 /* TagScribe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagScribe.entitlements; sourceTree = "<group>"; };
 		REF019 /* Social.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Social.framework; path = System/Library/Frameworks/Social.framework; sourceTree = SDKROOT; };
+		REF030 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		REF031 /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
+		REF032 /* CategoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesView.swift; sourceTree = "<group>"; };
+		REF033 /* TagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsView.swift; sourceTree = "<group>"; };
+		REF034 /* AddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -165,6 +175,11 @@
 			children = (
 				REF010 /* RootView.swift */,
 				REF011 /* SignInView.swift */,
+				REF030 /* LibraryView.swift */,
+				REF031 /* ArchiveView.swift */,
+				REF032 /* CategoriesView.swift */,
+				REF033 /* TagsView.swift */,
+				REF034 /* AddView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -345,6 +360,11 @@
 				BLD010 /* RootView.swift in Sources */,
 				BLD011 /* SignInView.swift in Sources */,
 				BLD020 /* JWTKeychain.swift in Sources */,
+				BLD030 /* LibraryView.swift in Sources */,
+				BLD031 /* ArchiveView.swift in Sources */,
+				BLD032 /* CategoriesView.swift in Sources */,
+				BLD033 /* TagsView.swift in Sources */,
+				BLD034 /* AddView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

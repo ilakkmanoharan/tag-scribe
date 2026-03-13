@@ -1,63 +1,26 @@
 import SwiftUI
 
+/// Main app content: tabbed UI (Library, Archive, Categories, Tags, Add) matching web. Sign out in each tab's toolbar.
 struct ContentView: View {
-    @State private var items: [Item] = []
-    @State private var errorMessage: String?
-    @State private var loading = true
-
     var body: some View {
-        NavigationStack {
-            Group {
-                if loading {
-                    ProgressView("Loading…")
-                } else if let err = errorMessage {
-                    VStack(spacing: 12) {
-                        Text(err)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        Text("Sign in on the web app to see your library here.")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding()
-                } else {
-                    List(items) { item in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title ?? item.content.prefix(60).description)
-                                .lineLimit(1)
-                            if !item.tags.isEmpty {
-                                Text(item.tags.joined(separator: ", "))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Tag Scribe")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Sign out") {
-                        AuthManager.shared.signOut()
-                    }
-                }
-            }
-            .refreshable { await load() }
-            .task { await load() }
+        TabView {
+            tab(NavigationStack { LibraryView().toolbar { signOutToolbar } }, title: "Library", systemImage: "book.pages")
+            tab(NavigationStack { ArchiveView().toolbar { signOutToolbar } }, title: "Archive", systemImage: "archivebox")
+            tab(NavigationStack { CategoriesView().toolbar { signOutToolbar } }, title: "Categories", systemImage: "folder")
+            tab(NavigationStack { TagsView().toolbar { signOutToolbar } }, title: "Tags", systemImage: "tag")
+            tab(NavigationStack { AddView().toolbar { signOutToolbar } }, title: "Add", systemImage: "plus.circle")
         }
     }
 
-    private func load() async {
-        loading = true
-        errorMessage = nil
-        defer { loading = false }
-        do {
-            items = try await APIClient.shared.getItems()
-        } catch APIError.unauthorized {
-            errorMessage = "Not signed in"
-        } catch let err {
-            errorMessage = err.localizedDescription
+    private var signOutToolbar: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Button("Sign out") { AuthManager.shared.signOut() }
         }
+    }
+
+    private func tab<Content: View>(_ content: Content, title: String, systemImage: String) -> some View {
+        content
+            .tabItem { Label(title, systemImage: systemImage) }
     }
 }
 
