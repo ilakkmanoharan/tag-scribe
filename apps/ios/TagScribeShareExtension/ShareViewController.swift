@@ -1,10 +1,9 @@
 import UIKit
 import UniformTypeIdentifiers
 import Social
-import FirebaseCore
-import FirebaseAuth
 
 /// Share Extension: save shared URLs (and text) to Tag Scribe from the system Share Sheet.
+/// Uses API JWT from app group keychain (no Firebase).
 final class ShareViewController: SLComposeServiceViewController {
 
     private let apiBaseURL = "https://tag-scribe.vercel.app"
@@ -13,8 +12,6 @@ final class ShareViewController: SLComposeServiceViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        FirebaseApp.configure()
-        try? Auth.auth().useUserAccessGroup("group.app.tagscribe.ios")
         extractSharedContent()
     }
 
@@ -70,13 +67,7 @@ final class ShareViewController: SLComposeServiceViewController {
     }
 
     private func saveLink(url: String, title: String?) async throws {
-        guard let user = Auth.auth().currentUser else {
-            throw NSError(domain: "ShareViewController", code: 401, userInfo: [NSLocalizedDescriptionKey: "Please sign in to Tag Scribe first."])
-        }
-        let token: String
-        do {
-            token = try await user.getIDToken()
-        } catch {
+        guard let token = JWTKeychain.load(), !token.isEmpty else {
             throw NSError(domain: "ShareViewController", code: 401, userInfo: [NSLocalizedDescriptionKey: "Please sign in to Tag Scribe first."])
         }
         let endpoint = URL(string: apiBaseURL + "/api/items")!

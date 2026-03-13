@@ -16,7 +16,7 @@ final class APIClient {
     private init() {}
 
     func authHeaders() async -> [String: String] {
-        guard let token = await AuthManager.shared.getIdToken() else {
+        guard let token = AuthManager.shared.getToken() else {
             return [:]
         }
         return ["Authorization": "Bearer \(token)"]

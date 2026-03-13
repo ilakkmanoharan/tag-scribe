@@ -38,7 +38,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Sign out") {
-                        try? AuthManager.shared.signOut()
+                        AuthManager.shared.signOut()
                     }
                 }
             }

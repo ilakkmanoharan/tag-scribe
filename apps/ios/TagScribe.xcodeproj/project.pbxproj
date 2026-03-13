@@ -16,13 +16,11 @@
 		BLD005 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF005 /* AuthManager.swift */; };
 		BLD006 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF006 /* APIClient.swift */; };
 		BLD007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = REF008 /* Assets.xcassets */; };
-		BLD008 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD /* FirebaseAuth */; };
-		BLD009 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD2 /* FirebaseCore */; };
 		BLD010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF010 /* RootView.swift */; };
 		BLD011 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF011 /* SignInView.swift */; };
+		BLD020 /* JWTKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF020 /* JWTKeychain.swift */; };
+		BLD021 /* JWTKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF020 /* JWTKeychain.swift */; };
 		BLD013 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF014 /* ShareViewController.swift */; };
-		BLD016 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD /* FirebaseAuth */; };
-		BLD017 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = PKGPROD2 /* FirebaseCore */; };
 		BLD018 /* TagScribeShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = REF017 /* TagScribeShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BLD019 /* Social.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = REF019 /* Social.framework */; };
 /* End PBXBuildFile section */
@@ -64,6 +62,7 @@
 		REF009 /* TagScribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TagScribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		REF010 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		REF011 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		REF020 /* JWTKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JWTKeychain.swift; sourceTree = "<group>"; };
 		REF014 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		REF015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		REF016 /* TagScribeShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagScribeShareExtension.entitlements; sourceTree = "<group>"; };
@@ -77,8 +76,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BLD008 /* FirebaseAuth in Frameworks */,
-				BLD009 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,8 +83,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BLD016 /* FirebaseAuth in Frameworks */,
-				BLD017 /* FirebaseCore in Frameworks */,
 				BLD019 /* Social.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -152,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				REF005 /* AuthManager.swift */,
+				REF020 /* JWTKeychain.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -203,8 +199,6 @@
 			);
 			name = TagScribe;
 			packageProductDependencies = (
-				PKGPROD /* FirebaseAuth */,
-				PKGPROD2 /* FirebaseCore */,
 			);
 			productName = TagScribe;
 			productReference = REF009 /* TagScribe.app */;
@@ -226,8 +220,6 @@
 			);
 			name = TagScribeShareExtension;
 			packageProductDependencies = (
-				PKGPROD /* FirebaseAuth */,
-				PKGPROD2 /* FirebaseCore */,
 			);
 			productName = TagScribeShareExtension;
 			productReference = REF017 /* TagScribeShareExtension.appex */;
@@ -352,6 +344,7 @@
 				BLD006 /* APIClient.swift in Sources */,
 				BLD010 /* RootView.swift in Sources */,
 				BLD011 /* SignInView.swift in Sources */,
+				BLD020 /* JWTKeychain.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -360,6 +353,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BLD013 /* ShareViewController.swift in Sources */,
+				BLD021 /* JWTKeychain.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
