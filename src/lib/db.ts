@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { mkdirSync } from "fs";
 import path from "path";
 import type { Item, Category } from "@/types";
 
@@ -8,6 +9,7 @@ let db: Database.Database | null = null;
 
 function getDb(): Database.Database {
   if (!db) {
+    mkdirSync(path.dirname(DB_PATH), { recursive: true });
     db = new Database(DB_PATH);
     db.pragma("journal_mode = WAL");
     initSchema(db);
