@@ -19,9 +19,12 @@
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionActivationRule</key>
-		<string>SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $att, ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url" OR ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "public.plain-text").@count >= 1).@count >= 1</string>
-		<key>NSExtensionAttributes</key>
 		<dict>
+			<key>NSExtensionActivationSupportsAttachmentsWithMatchingTypeIdentifiers</key>
+			<array>
+				<string>public.url</string>
+				<string>public.plain-text</string>
+			</array>
 			<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
 			<integer>1</integer>
 			<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>

@@ -227,7 +227,6 @@
 				SRC003 /* Sources */,
 				RSR003 /* Resources */,
 				FRM003 /* Frameworks */,
-				SCP003 /* Ensure NSExtensionActivationRule in extension Info.plist */,
 			);
 			buildRules = (
 			);
@@ -329,20 +328,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "PLIST=\"${PROJECT_DIR}/GoogleService-Info.plist\"\nif [ -n \"${GOOGLE_SERVICE_INFO_PLIST}\" ]; then\n  echo \"${GOOGLE_SERVICE_INFO_PLIST}\" | base64 -D > \"$PLIST\"\n  exit 0\nfi\nif [ -f \"$PLIST\" ]; then exit 0; fi\n# No secret set; create placeholder for Xcode Cloud\ncat > \"$PLIST\" << 'PLISTEOF'\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CLIENT_ID</key>\n\t<string>placeholder.apps.googleusercontent.com</string>\n\t<key>REVERSED_CLIENT_ID</key>\n\t<string>com.googleusercontent.apps.placeholder</string>\n\t<key>API_KEY</key>\n\t<string>placeholder</string>\n\t<key>GCM_SENDER_ID</key>\n\t<string>000000000000</string>\n\t<key>PLIST_VERSION</key>\n\t<string>1</string>\n\t<key>BUNDLE_ID</key>\n\t<string>app.tagscribe.ios</string>\n\t<key>PROJECT_ID</key>\n\t<string>placeholder</string>\n\t<key>STORAGE_BUCKET</key>\n\t<string>placeholder.appspot.com</string>\n\t<key>IS_ADS_ENABLED</key>\n\t<false/>\n\t<key>IS_ANALYTICS_ENABLED</key>\n\t<false/>\n\t<key>IS_APPINVITE_ENABLED</key>\n\t<false/>\n\t<key>IS_GCM_ENABLED</key>\n\t<false/>\n\t<key>IS_SIGNIN_ENABLED</key>\n\t<true/>\n</dict>\n</plist>\nPLISTEOF\n";
-		};
-		SCP003 /* Ensure NSExtensionActivationRule in extension Info.plist */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Ensure NSExtensionActivationRule in extension Info.plist";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "EXTPLIST=\"${BUILT_PRODUCTS_DIR}/${WRAPPER_NAME}/Info.plist\"\nif [ -f \"$EXTPLIST\" ]; then\n  /usr/libexec/PlistBuddy -c 'Set :NSExtension:NSExtensionActivationRule \"SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $att, ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO \\\"public.url\\\" OR ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO \\\"public.plain-text\\\").@count >= 1).@count >= 1\"' \"$EXTPLIST\" 2>/dev/null || true\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
