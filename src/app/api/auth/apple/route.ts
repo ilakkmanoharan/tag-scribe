@@ -75,6 +75,9 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!("uid" in result)) {
+    return NextResponse.json({ error: "Could not create or find user" }, { status: 500 });
+  }
   const uid = result.uid;
   await setAppleSubToUid(applePayload.sub, uid);
   await ensureUserDetails(uid, {
