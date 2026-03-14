@@ -225,6 +225,32 @@ final class APIClient {
         return try decoder.decode(Item.self, from: data)
     }
 
+    /// Fetch item image at index. Returns URL when API returns JSON { url } (e.g. signed URL), or image Data when API returns raw image bytes.
+    func getItemImage(itemId: String, index: Int) async throws -> (url: URL?, data: Data?) {
+        var components = URLComponents(string: baseURL + "/api/items/\(itemId)/image")!
+        components.queryItems = [URLQueryItem(name: "index", value: String(index))]
+        var request = URLRequest(url: components.url!)
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        let contentType = (response as? HTTPURLResponse).flatMap { $0.value(forHTTPHeaderField: "Content-Type") } ?? ""
+        if contentType.contains("application/json"),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let urlString = json["url"] as? String,
+           let url = URL(string: urlString) {
+            return (url, nil)
+        }
+        if contentType.hasPrefix("image/") {
+            return (nil, data)
+        }
+        return (nil, nil)
+    }
+
     /// Delete item. API: DELETE /api/items/:id
     func deleteItem(id: String) async throws {
         let url = URL(string: baseURL + "/api/items/\(id)")!

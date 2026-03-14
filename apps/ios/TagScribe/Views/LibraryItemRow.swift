@@ -27,6 +27,13 @@ struct LibraryItemRow: View {
     @State private var editCategoryId: String?
     @State private var editNewTagInput = ""
     @State private var savingEdit = false
+    @State private var loadedImages: [(url: URL?, data: Data?)] = []
+
+    private var imageCount: Int {
+        guard item.type == "image" else { return 0 }
+        if let urls = item.imageUrls, !urls.isEmpty { return urls.count }
+        return 1
+    }
 
     private var contentURL: URL? {
         guard item.type == "link" || item.content.hasPrefix("http") else { return nil }
@@ -36,6 +43,19 @@ struct LibraryItemRow: View {
     private var imageURL: URL? {
         guard item.type == "image", let url = URL(string: item.content), item.content.hasPrefix("http") else { return nil }
         return url
+    }
+
+    private func loadImages() async {
+        guard item.type == "image", imageCount > 0 else {
+            await MainActor.run { loadedImages = [] }
+            return
+        }
+        var results: [(url: URL?, data: Data?)] = []
+        for index in 0..<imageCount {
+            let pair = try? await APIClient.shared.getItemImage(itemId: item.id, index: index)
+            results.append((url: pair?.url, data: pair?.data))
+        }
+        await MainActor.run { loadedImages = results }
     }
 
     var body: some View {
@@ -75,27 +95,64 @@ struct LibraryItemRow: View {
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: 10) {
-                    if let url = imageURL {
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxHeight: 200)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            case .failure:
-                                Link(destination: url) {
-                                    Label("View image", systemImage: "photo")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.blue)
+                    if let cat = categoryName {
+                        HStack(spacing: 6) {
+                            Text("Category:")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text(cat)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                        }
+                    }
+
+                    if item.type == "image" {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                if loadedImages.isEmpty && imageCount > 0 {
+                                    ProgressView()
+                                        .frame(width: 120, height: 120)
                                 }
-                            case .empty:
-                                ProgressView()
-                                    .frame(height: 120)
-                            @unknown default:
-                                EmptyView()
+                                ForEach(Array(loadedImages.enumerated()), id: \.offset) { _, pair in
+                                    if let url = pair.url {
+                                        AsyncImage(url: url) { phase in
+                                            switch phase {
+                                            case .success(let image):
+                                                image
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(maxHeight: 200)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            case .failure:
+                                                Image(systemName: "photo")
+                                                    .font(.largeTitle)
+                                                    .foregroundStyle(.secondary)
+                                                    .frame(height: 120)
+                                            case .empty:
+                                                ProgressView()
+                                                    .frame(height: 120)
+                                            @unknown default:
+                                                EmptyView()
+                                            }
+                                        }
+                                    } else if let data = pair.data, let uiImage = UIImage(data: data) {
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(maxHeight: 200)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    } else {
+                                        ProgressView()
+                                            .frame(width: 120, height: 120)
+                                    }
+                                }
                             }
+                        }
+                        .task(id: "\(item.id)-\(isExpanded)") {
+                            if isExpanded { await loadImages() }
+                        }
+                        .onChange(of: isExpanded) { _, expanded in
+                            if !expanded { loadedImages = [] }
                         }
                     }
 
@@ -116,6 +173,13 @@ struct LibraryItemRow: View {
                         Text(highlight)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if let caption = item.caption, !caption.isEmpty {
+                        Text(caption)
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 

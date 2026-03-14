@@ -5,6 +5,7 @@ struct Item: Codable, Identifiable {
     let id: String
     let type: String
     let content: String
+    var imageUrls: [String]?
     var title: String?
     var highlight: String?
     var caption: String?
