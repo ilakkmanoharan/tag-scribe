@@ -246,6 +246,22 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to save");
+      if (item.type !== "image" && editImageDataUrls.length > 0) {
+        const catId = editCategoryId ?? "cat-inbox";
+        const caption = editCaption.trim() || undefined;
+        for (const dataUrl of editImageDataUrls) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
+          const formData = new FormData();
+          formData.append("image", blob, `image.${ext}`);
+          if (editTitle.trim()) formData.append("title", editTitle.trim());
+          if (caption) formData.append("caption", caption);
+          formData.append("tags", JSON.stringify(editTags));
+          formData.append("categoryId", catId);
+          const postRes = await fetch("/api/items", { method: "POST", headers: authH, body: formData });
+          if (!postRes.ok) throw new Error("Failed to add picture");
+        }
+      }
       setEditOpen(false);
       router.refresh();
     } finally {
@@ -590,15 +606,14 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
               />
             </div>
-            {item.type === "image" && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--text)]">Pictures (optional) — replace</label>
+              <label className="mb-1 block text-sm font-medium text-[var(--text)]">Pictures (optional) — add multiple</label>
               <div
                 onDrop={handleEditDrop}
                 onDragOver={handleEditDragOver}
                 className="min-h-[100px] rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] p-4"
               >
-                {!editImageDataUrls.length && (
+                {item.type === "image" && !editImageDataUrls.length && (
                   <div className="flex flex-wrap gap-3 mb-2">
                     <div className="relative">
                       <img
@@ -606,7 +621,7 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
                         alt="Current"
                         className="h-24 w-24 rounded object-cover"
                       />
-                      <span className="absolute bottom-0 left-0 right-0 text-center text-xs text-[var(--muted)] bg-black/50 rounded-b">Current</span>
+                      <span className="absolute bottom-0 left-0 right-0 text-center text-xs text-[var(--muted)] bg-black/50 rounded-b">Current (replace by dropping below)</span>
                     </div>
                   </div>
                 )}
@@ -614,7 +629,7 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
                   <div className="flex flex-wrap gap-3">
                     {editImageDataUrls.map((dataUrl, index) => (
                       <div key={index} className="relative">
-                        <img src={dataUrl} alt={`New ${index + 1}`} className="h-24 w-24 rounded object-cover" />
+                        <img src={dataUrl} alt={`Picture ${index + 1}`} className="h-24 w-24 rounded object-cover" />
                         <button
                           type="button"
                           onClick={() => removeEditImage(index)}
@@ -628,11 +643,10 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
                   </div>
                 ) : null}
                 <p className="mt-2 text-center text-sm text-[var(--muted)]">
-                  Paste or drop pictures here to replace
+                  Paste or drop pictures here
                 </p>
               </div>
             </div>
-            )}
             <div style={{ display: item.type === "video" ? undefined : "none" }}>
               <label className="mb-1 block text-sm font-medium text-[var(--text)]">Video (optional)</label>
               <input
