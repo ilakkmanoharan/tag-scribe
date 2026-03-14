@@ -175,11 +175,13 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
       const tags = selectedTags;
       const caption = highlight.trim() || undefined;
 
-      for (const dataUrl of imageDataUrls) {
+      if (hasImages) {
         const formData = new FormData();
-        const blob = await (await fetch(dataUrl)).blob();
-        const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
-        formData.append("image", blob, `image.${ext}`);
+        for (const dataUrl of imageDataUrls) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
+          formData.append("image", blob, `image.${ext}`);
+        }
         if (titleVal) formData.append("title", titleVal);
         if (caption) formData.append("caption", caption);
         formData.append("tags", JSON.stringify(tags));
@@ -192,7 +194,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || "Failed to save image");
+          throw new Error(data.error || "Failed to save images");
         }
       }
       if (hasVideo) {

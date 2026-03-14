@@ -10,8 +10,10 @@ export type SourceHint = "web" | "book" | "camera" | "manual" | "social";
 export interface Item {
   id: string;
   type: ItemType;
-  /** For link: URL. For image: file path or blob ref. For text: raw text. */
+  /** For link: URL. For image: file path or blob ref (or first image when imageUrls used). For text: raw text. */
   content: string;
+  /** For image type: multiple image storage paths. When set, content is first image for backward compat. */
+  imageUrls?: string[];
   /** Optional display title (e.g. page title for links). */
   title?: string;
   /** For links: highlighted sentence(s) from the article. */

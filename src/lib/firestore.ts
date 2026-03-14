@@ -36,6 +36,7 @@ function docToItem(id: string, data: Record<string, unknown>): Item {
     id,
     type: (data.type as Item["type"]) ?? "text",
     content: (data.content as string) ?? "",
+    imageUrls: Array.isArray(data.imageUrls) ? (data.imageUrls as string[]) : undefined,
     title: (data.title as string | undefined) ?? undefined,
     highlight: (data.highlight as string | undefined) ?? undefined,
     caption: (data.caption as string | undefined) ?? undefined,
@@ -181,6 +182,7 @@ export async function createItem(uid: string, item: Omit<Item, "createdAt" | "up
   await col.doc(item.id).set({
     type: item.type,
     content: item.content,
+    imageUrls: item.imageUrls ?? null,
     title: item.title ?? null,
     highlight: item.highlight ?? null,
     caption: item.caption ?? null,
@@ -226,7 +228,7 @@ export async function updateItemTags(uid: string, id: string, tags: string[]): P
   return { ...existing, tags: normalized, updatedAt };
 }
 
-export type ItemUpdateFields = Partial<Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags">> & { archived?: boolean };
+export type ItemUpdateFields = Partial<Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags" | "imageUrls">> & { archived?: boolean };
 
 export async function updateItem(uid: string, id: string, fields: ItemUpdateFields): Promise<Item | undefined> {
   const existing = await getItemById(uid, id);
@@ -240,6 +242,7 @@ export async function updateItem(uid: string, id: string, fields: ItemUpdateFiel
   if (fields.highlight !== undefined) updates.highlight = fields.highlight ?? null;
   if (fields.caption !== undefined) updates.caption = fields.caption ?? null;
   if (fields.categoryId !== undefined) updates.categoryId = fields.categoryId ?? null;
+  if (Array.isArray(fields.imageUrls)) updates.imageUrls = fields.imageUrls;
   if (Array.isArray(fields.tags)) {
     updates.tags = fields.tags.map((t) => t.trim()).filter(Boolean);
   }
@@ -254,6 +257,7 @@ export async function updateItem(uid: string, id: string, fields: ItemUpdateFiel
     ...(fields.highlight !== undefined && { highlight: fields.highlight ?? undefined }),
     ...(fields.caption !== undefined && { caption: fields.caption ?? undefined }),
     ...(fields.categoryId !== undefined && { categoryId: fields.categoryId }),
+    ...(Array.isArray(fields.imageUrls) && { imageUrls: fields.imageUrls }),
     ...(Array.isArray(fields.tags) && { tags: fields.tags.map((t) => t.trim()).filter(Boolean) }),
     ...(typeof fields.archived === "boolean" && { archivedAt: fields.archived ? updatedAt : undefined }),
     updatedAt,

@@ -81,13 +81,24 @@ function initSchema(database: Database.Database) {
       `INSERT OR IGNORE INTO categories (id, name, description, parent_id, "order", created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run("cat-inbox", "Inbox", "Dropped items to process later", null, 0, now, now);
+  try {
+    database.exec("ALTER TABLE items ADD COLUMN image_urls TEXT");
+  } catch {
+    // column already exists
+  }
 }
 
 function rowToItem(row: Record<string, unknown>): Item {
+  const imageUrlsRaw = row.image_urls;
+  const imageUrls =
+    imageUrlsRaw != null && imageUrlsRaw !== ""
+      ? (JSON.parse(String(imageUrlsRaw)) as string[])
+      : undefined;
   return {
     id: row.id as string,
     type: row.type as Item["type"],
     content: row.content as string,
+    imageUrls: Array.isArray(imageUrls) ? imageUrls : undefined,
     title: (row.title as string) ?? undefined,
     highlight: (row.highlight as string) ?? undefined,
     caption: (row.caption as string) ?? undefined,
@@ -191,7 +202,7 @@ export function updateItemTags(id: string, tags: string[]): Item | undefined {
   return rowToItem({ ...row, tags: JSON.stringify(normalized), updated_at: now });
 }
 
-export type ItemUpdateFields = Partial<Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags">> & { archived?: boolean };
+export type ItemUpdateFields = Partial<Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags" | "imageUrls">> & { archived?: boolean };
 
 export function updateItem(id: string, fields: ItemUpdateFields): Item | undefined {
   const database = getDb();
@@ -204,6 +215,7 @@ export function updateItem(id: string, fields: ItemUpdateFields): Item | undefin
   if (fields.highlight !== undefined) updates.highlight = fields.highlight ?? null;
   if (fields.caption !== undefined) updates.caption = fields.caption ?? null;
   if (fields.categoryId !== undefined) updates.category_id = fields.categoryId ?? null;
+  if (Array.isArray(fields.imageUrls)) updates.image_urls = JSON.stringify(fields.imageUrls);
   if (Array.isArray(fields.tags)) {
     const normalized = fields.tags.map((t) => t.trim()).filter(Boolean);
     updates.tags = JSON.stringify(normalized);
@@ -215,7 +227,7 @@ export function updateItem(id: string, fields: ItemUpdateFields): Item | undefin
     .prepare(
       `UPDATE items SET
         title = ?, content = ?, highlight = ?, caption = ?,
-        tags = ?, category_id = ?, updated_at = ?, archived_at = ?
+        tags = ?, category_id = ?, image_urls = ?, updated_at = ?, archived_at = ?
       WHERE id = ?`
     )
     .run(
@@ -225,6 +237,7 @@ export function updateItem(id: string, fields: ItemUpdateFields): Item | undefin
       updates.caption ?? row.caption,
       updates.tags ?? row.tags,
       updates.category_id ?? row.category_id,
+      updates.image_urls ?? row.image_urls ?? "[]",
       now,
       updates.archived_at ?? row.archived_at,
       id
@@ -305,13 +318,14 @@ export function createItem(item: Omit<Item, "createdAt" | "updatedAt">): Item {
   const now = new Date().toISOString();
   database
     .prepare(
-      `INSERT INTO items (id, type, content, title, highlight, caption, tags, category_id, source, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO items (id, type, content, image_urls, title, highlight, caption, tags, category_id, source, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       item.id,
       item.type,
       item.content,
+      Array.isArray(item.imageUrls) ? JSON.stringify(item.imageUrls) : "[]",
       item.title ?? null,
       item.highlight ?? null,
       item.caption ?? null,

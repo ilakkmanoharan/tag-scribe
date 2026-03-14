@@ -65,6 +65,7 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   const [deleting, setDeleting] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageSrcs, setImageSrcs] = useState<(string | null)[]>([]);
   const [moveOpen, setMoveOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [moving, setMoving] = useState(false);
@@ -105,18 +106,32 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
     return () => { cancelled = true; };
   }, [getAuthHeaders]);
 
+  const imageCount = item.type === "image" ? (item.imageUrls?.length || 1) : 0;
   useEffect(() => {
-    if (item.type !== "image" || !isFirebaseEnabled) return;
+    if (item.type !== "image") return;
     let cancelled = false;
-    getAuthHeaders()
-      .then((headers) => fetch(`/api/items/${item.id}/image`, { headers }))
-      .then((r) => (r?.ok ? r.json() : null))
-      .then((data: { url?: string } | null) => {
-        if (!cancelled && data?.url) setImageSrc(data.url);
-      })
-      .catch(() => {});
+    const n = imageCount;
+    if (n <= 0) return;
+    if (isFirebaseEnabled && n > 0) {
+      Promise.all(
+        Array.from({ length: n }, (_, i) =>
+          getAuthHeaders().then((headers) =>
+            fetch(`/api/items/${item.id}/image?index=${i}`, { headers }).then((r) => (r?.ok ? r.json() : null))
+          )
+        )
+      ).then((results) => {
+        if (cancelled) return;
+        const urls = results.map((d: { url?: string } | null) => d?.url ?? null);
+        setImageSrc(urls[0] ?? null);
+        if (n > 1) setImageSrcs(urls);
+        else setImageSrcs([]);
+      }).catch(() => {});
+    } else {
+      setImageSrc(null);
+      setImageSrcs(n > 1 ? Array.from({ length: n }, (_, i) => `/api/items/${item.id}/image?index=${i}`) : []);
+    }
     return () => { cancelled = true; };
-  }, [item.id, item.type, isFirebaseEnabled, getAuthHeaders]);
+  }, [item.id, item.type, isFirebaseEnabled, getAuthHeaders, imageCount]);
 
   const authHeaders = () => getAuthHeaders();
 
@@ -214,17 +229,18 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
     try {
       const authH = await authHeaders();
       if (item.type === "image" && editImageDataUrls.length > 0) {
-        const dataUrl = editImageDataUrls[0];
-        const blob = await (await fetch(dataUrl)).blob();
-        const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
         const formData = new FormData();
-        formData.append("image", blob, `image.${ext}`);
-        const putRes = await fetch(`/api/items/${item.id}/image`, {
-          method: "PUT",
+        for (const dataUrl of editImageDataUrls) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
+          formData.append("image", blob, `image.${ext}`);
+        }
+        const postRes = await fetch(`/api/items/${item.id}/image`, {
+          method: "POST",
           headers: authH,
           body: formData,
         });
-        if (!putRes.ok) throw new Error("Failed to replace image");
+        if (!postRes.ok) throw new Error("Failed to add pictures");
       }
       const contentVal =
         item.type === "video"
@@ -249,18 +265,18 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
       if (item.type !== "image" && editImageDataUrls.length > 0) {
         const catId = editCategoryId ?? "cat-inbox";
         const caption = editCaption.trim() || undefined;
+        const formData = new FormData();
         for (const dataUrl of editImageDataUrls) {
           const blob = await (await fetch(dataUrl)).blob();
           const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
-          const formData = new FormData();
           formData.append("image", blob, `image.${ext}`);
-          if (editTitle.trim()) formData.append("title", editTitle.trim());
-          if (caption) formData.append("caption", caption);
-          formData.append("tags", JSON.stringify(editTags));
-          formData.append("categoryId", catId);
-          const postRes = await fetch("/api/items", { method: "POST", headers: authH, body: formData });
-          if (!postRes.ok) throw new Error("Failed to add picture");
         }
+        if (editTitle.trim()) formData.append("title", editTitle.trim());
+        if (caption) formData.append("caption", caption);
+        formData.append("tags", JSON.stringify(editTags));
+        formData.append("categoryId", catId);
+        const postRes = await fetch("/api/items", { method: "POST", headers: authH, body: formData });
+        if (!postRes.ok) throw new Error("Failed to add pictures");
       }
       setEditOpen(false);
       router.refresh();
@@ -519,6 +535,18 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
               <div className="flex max-h-56 min-h-[120px] flex-col items-center justify-center gap-2 py-6 text-center text-sm text-[var(--muted)]">
                 <p>Image couldn’t be loaded.</p>
                 <p>Delete this card and add the image again from Add to restore it.</p>
+              </div>
+            ) : imageCount > 1 ? (
+              <div className="flex flex-wrap gap-2 p-2">
+                {Array.from({ length: imageCount }, (_, i) => (
+                  <img
+                    key={i}
+                    src={imageSrcs[i] ?? (i === 0 ? imageSrc : null) ?? `/api/items/${item.id}/image?index=${i}`}
+                    alt={`${item.title || "Image"} ${i + 1}`}
+                    className="max-h-40 w-auto max-w-full rounded object-contain"
+                    onError={() => setImageError(true)}
+                  />
+                ))}
               </div>
             ) : (
               <img

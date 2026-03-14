@@ -12,10 +12,11 @@ const MIME_EXT: Record<string, string> = {
   "image/gif": "gif",
 };
 
-/** Storage path for an item image: users/{uid}/items/{itemId}/image.{ext} */
-export function getItemImageStoragePath(uid: string, itemId: string, mimeType: string): string {
+/** Storage path for an item image: users/{uid}/items/{itemId}/image.{ext} or /{index}.{ext} for multi-image */
+export function getItemImageStoragePath(uid: string, itemId: string, mimeType: string, index?: number): string {
   const ext = MIME_EXT[mimeType.toLowerCase()] || "png";
-  return `users/${uid}/items/${itemId}/image.${ext}`;
+  const name = index !== undefined && index >= 0 ? String(index) : "image";
+  return `users/${uid}/items/${itemId}/${name}.${ext}`;
 }
 
 /**
@@ -33,11 +34,12 @@ export async function uploadItemImage(
   uid: string,
   itemId: string,
   buffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  index?: number
 ): Promise<string> {
   const bucket = getStorageBucket();
   if (!bucket) throw new Error("Firebase Storage not configured");
-  const path = getItemImageStoragePath(uid, itemId, mimeType);
+  const path = getItemImageStoragePath(uid, itemId, mimeType, index);
   const file = bucket.file(path);
   await file.save(buffer, {
     metadata: { contentType: mimeType },

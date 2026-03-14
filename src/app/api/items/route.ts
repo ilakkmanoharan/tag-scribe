@@ -87,39 +87,47 @@ export async function POST(request: Request) {
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
-      const imageFile = formData.get("image") as File | null;
-      if (!imageFile || !imageFile.size) {
-        return NextResponse.json({ error: "Image file is required" }, { status: 400 });
+      const imageFiles = formData.getAll("image") as File[];
+      const validImageFiles = imageFiles.filter((f): f is File => f instanceof File && f.size > 0 && f.type.startsWith("image/"));
+      if (validImageFiles.length === 0) {
+        return NextResponse.json({ error: "At least one image file is required" }, { status: 400 });
       }
       type = "image";
       id = "item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
-      const mime = (imageFile.type || "image/png").toLowerCase();
-      const arrayBuffer = await imageFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const imageUrlsToStore: string[] = [];
 
-      if (result.uid) {
-        try {
-          contentToStore = await uploadItemImage(result.uid, id, buffer, mime);
-        } catch (uploadErr) {
-          console.error("Firebase Storage upload failed:", uploadErr);
-          return NextResponse.json(
-            { error: "Failed to upload image to storage" },
-            { status: 500 }
-          );
+      for (let index = 0; index < validImageFiles.length; index++) {
+        const imageFile = validImageFiles[index];
+        const mime = (imageFile.type || "image/png").toLowerCase();
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        if (result.uid) {
+          try {
+            const storagePath = await uploadItemImage(result.uid, id, buffer, mime, index);
+            imageUrlsToStore.push(storagePath);
+          } catch (uploadErr) {
+            console.error("Firebase Storage upload failed:", uploadErr);
+            return NextResponse.json(
+              { error: "Failed to upload image to storage" },
+              { status: 500 }
+            );
+          }
+        } else {
+          const ext = MIME_EXT[mime] || "png";
+          const dir = path.join(process.cwd(), "private", "uploads", "items");
+          const filePath = path.join(dir, `${id}_${index}.${ext}`);
+          await mkdir(dir, { recursive: true });
+          await writeFile(filePath, buffer);
+          const st = await stat(filePath);
+          if (!st.size) {
+            return NextResponse.json({ error: "Image could not be saved to disk" }, { status: 500 });
+          }
+          imageUrlsToStore.push(`uploads/items/${id}_${index}.${ext}`);
         }
-      } else {
-        const ext = MIME_EXT[mime] || "png";
-        const dir = path.join(process.cwd(), "private", "uploads", "items");
-        const filePath = path.join(dir, `${id}.${ext}`);
-        await mkdir(dir, { recursive: true });
-        await writeFile(filePath, buffer);
-        const st = await stat(filePath);
-        if (!st.size) {
-          return NextResponse.json({ error: "Image could not be saved to disk" }, { status: 500 });
-        }
-        contentToStore = `uploads/items/${id}.${ext}`;
       }
 
+      contentToStore = imageUrlsToStore[0];
       title = (formData.get("title") as string)?.trim() || undefined;
       caption = (formData.get("caption") as string)?.trim() || undefined;
       const tagsRaw = formData.get("tags");
@@ -127,6 +135,37 @@ export async function POST(request: Request) {
       categoryId = (formData.get("categoryId") as string) || "cat-inbox";
       sourceHint = "camera";
       highlight = undefined;
+
+      if (result.uid) {
+        await firestore.ensureInboxCategory(result.uid);
+        const item = await firestore.createItem(result.uid, {
+          id,
+          type,
+          content: contentToStore,
+          imageUrls: imageUrlsToStore,
+          title,
+          highlight,
+          caption,
+          tags,
+          categoryId,
+          source: sourceHint,
+        });
+        return NextResponse.json(item);
+      }
+      const { createItem } = await import("@/lib/db");
+      const item = createItem({
+        id,
+        type,
+        content: contentToStore,
+        imageUrls: imageUrlsToStore,
+        title,
+        highlight,
+        caption,
+        tags,
+        categoryId,
+        source: sourceHint,
+      });
+      return NextResponse.json(item);
     } else {
       const body = await request.json();
       const { type: t, content, title: tit, highlight: hl, caption: cap, tags: tg, categoryId: catId, source } = body as {

@@ -23,12 +23,20 @@ const MIME_BY_EXT: Record<string, string> = {
   gif: "image/gif",
 };
 
+function getContentAt(item: { content: string; imageUrls?: string[] }, index: number): string | null {
+  const urls = item.imageUrls?.length ? item.imageUrls : [item.content];
+  if (index < 0 || index >= urls.length) return null;
+  return urls[index];
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const index = Math.max(0, parseInt(searchParams.get("index") ?? "0", 10) || 0);
 
     if (isFirebaseAdminConfigured()) {
       const uid = await getEffectiveUidFromRequest(request);
@@ -37,7 +45,8 @@ export async function GET(
       if (!item || item.type !== "image") {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
-      const content = item.content;
+      const content = getContentAt(item, index);
+      if (!content) return NextResponse.json({ error: "Not found" }, { status: 404 });
       if (content.startsWith("http")) {
         return NextResponse.json({ url: content });
       }
@@ -53,7 +62,8 @@ export async function GET(
     if (!item || item.type !== "image") {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    const content = item.content;
+    const content = getContentAt(item, index);
+    if (!content) return NextResponse.json({ error: "Not found" }, { status: 404 });
     let buffer: Buffer;
     let mime: string;
 
@@ -82,6 +92,78 @@ export async function GET(
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+}
+
+/** Append images to an image item. Accepts multipart/form-data with multiple "image" files. */
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const result = await requireUidOrNull(request);
+    if ("status" in result && result.status === 401) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const { id } = await params;
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.includes("multipart/form-data")) {
+      return NextResponse.json({ error: "multipart/form-data with image file(s) required" }, { status: 400 });
+    }
+    const formData = await request.formData();
+    const imageFiles = formData.getAll("image") as File[];
+    const validFiles = imageFiles.filter((f): f is File => f instanceof File && f.size > 0 && f.type.startsWith("image/"));
+    if (validFiles.length === 0) {
+      return NextResponse.json({ error: "At least one image file is required" }, { status: 400 });
+    }
+
+    if (result.uid) {
+      const item = await firestore.getItemById(result.uid, id);
+      if (!item || item.type !== "image") {
+        return NextResponse.json({ error: "Item not found or not an image" }, { status: 404 });
+      }
+      const existingUrls = item.imageUrls?.length ? item.imageUrls : [item.content];
+      const newPaths: string[] = [];
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
+        const mime = file.type.toLowerCase();
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const storagePath = await uploadItemImage(result.uid, id, buffer, mime, existingUrls.length + i);
+        newPaths.push(storagePath);
+      }
+      const imageUrls = [...existingUrls, ...newPaths];
+      const updated = await firestore.updateItem(result.uid, id, { content: imageUrls[0], imageUrls });
+      if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+      return NextResponse.json(updated);
+    }
+
+    const { getItemById, updateItem } = await import("@/lib/db");
+    const item = getItemById(id);
+    if (!item || item.type !== "image") {
+      return NextResponse.json({ error: "Item not found or not an image" }, { status: 404 });
+    }
+    const existingUrls = item.imageUrls?.length ? item.imageUrls : [item.content];
+    const newPaths: string[] = [];
+    const dir = path.join(process.cwd(), "private", "uploads", "items");
+    await mkdir(dir, { recursive: true });
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      const mime = file.type.toLowerCase();
+      const ext = MIME_EXT[mime] || "png";
+      const idx = existingUrls.length + i;
+      const filePath = path.join(dir, `${id}_${idx}.${ext}`);
+      await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
+      const st = await stat(filePath);
+      if (!st.size) return NextResponse.json({ error: "Image could not be saved" }, { status: 500 });
+      newPaths.push(`uploads/items/${id}_${idx}.${ext}`);
+    }
+    const imageUrls = [...existingUrls, ...newPaths];
+    const updated = updateItem(id, { content: imageUrls[0], imageUrls });
+    if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+    return NextResponse.json(updated);
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "Failed to append images" }, { status: 500 });
   }
 }
 
@@ -115,8 +197,8 @@ export async function PUT(
         return NextResponse.json({ error: "Item not found or not an image" }, { status: 404 });
       }
       try {
-        const contentToStore = await uploadItemImage(result.uid, id, buffer, mime);
-        const updated = await firestore.updateItem(result.uid, id, { content: contentToStore });
+        const contentToStore = await uploadItemImage(result.uid, id, buffer, mime, 0);
+        const updated = await firestore.updateItem(result.uid, id, { content: contentToStore, imageUrls: [contentToStore] });
         if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
         return NextResponse.json(updated);
       } catch (uploadErr) {
@@ -132,15 +214,15 @@ export async function PUT(
     }
     const ext = MIME_EXT[mime] || "png";
     const dir = path.join(process.cwd(), "private", "uploads", "items");
-    const filePath = path.join(dir, `${id}.${ext}`);
+    const filePath = path.join(dir, `${id}_0.${ext}`);
     await mkdir(dir, { recursive: true });
     await writeFile(filePath, buffer);
     const st = await stat(filePath);
     if (!st.size) {
       return NextResponse.json({ error: "Image could not be saved" }, { status: 500 });
     }
-    const contentToStore = `uploads/items/${id}.${ext}`;
-    const updated = updateItem(id, { content: contentToStore });
+    const contentToStore = `uploads/items/${id}_0.${ext}`;
+    const updated = updateItem(id, { content: contentToStore, imageUrls: [contentToStore] });
     if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
     return NextResponse.json(updated);
   } catch (e) {
