@@ -17,18 +17,15 @@ struct AddView: View {
     @State private var message: String?
     @State private var isSuccess = false
 
-    private var hasContent: Bool {
-        let l = link.trimmingCharacters(in: .whitespacesAndNewlines)
-        let v = videoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (!l.isEmpty && (l.hasPrefix("http://") || l.hasPrefix("https://"))) ||
-            (!v.isEmpty && (v.hasPrefix("http://") || v.hasPrefix("https://")))
+    private var hasValidTitle: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
         Form {
             Section {
-                TextField("Display title (optional)", text: $title)
-                TextField("Paste or drop a link (e.g. https://...)", text: $link)
+                TextField("Display title", text: $title)
+                TextField("Paste or drop a link (optional, e.g. https://...)", text: $link)
                     .textContentType(.URL)
                     .autocapitalization(.none)
                     .keyboardType(.URL)
@@ -39,7 +36,7 @@ struct AddView: View {
             } header: {
                 Text("Link & media")
             } footer: {
-                Text("Add at least one: link or video URL.")
+                Text("Display title is required. Link and video URL are optional.")
             }
 
             Section("Highlight (optional)") {
@@ -157,7 +154,7 @@ struct AddView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
-                .disabled(saving || !hasContent)
+                .disabled(saving || !hasValidTitle)
             }
         }
         .navigationTitle("Add")
@@ -203,13 +200,14 @@ struct AddView: View {
     }
 
     private func save() {
+        let titleTrimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let linkTrimmed = link.trimmingCharacters(in: .whitespacesAndNewlines)
         let videoTrimmed = videoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasLink = !linkTrimmed.isEmpty && (linkTrimmed.hasPrefix("http://") || linkTrimmed.hasPrefix("https://"))
         let hasVideo = !videoTrimmed.isEmpty && (videoTrimmed.hasPrefix("http://") || videoTrimmed.hasPrefix("https://"))
 
-        if !hasLink && !hasVideo {
-            message = "Please enter a valid link or video URL."
+        if titleTrimmed.isEmpty {
+            message = "Please enter a display title."
             isSuccess = false
             return
         }
@@ -221,16 +219,19 @@ struct AddView: View {
         if hasLink {
             type = "link"
             content = linkTrimmed
-        } else {
+        } else if hasVideo {
             type = "video"
             content = videoTrimmed
+        } else {
+            type = "text"
+            content = titleTrimmed
         }
         Task {
             do {
                 _ = try await APIClient.shared.createItem(
                     type: type,
                     content: content,
-                    title: title.isEmpty ? nil : title,
+                    title: titleTrimmed,
                     highlight: highlight.isEmpty ? nil : highlight,
                     tags: selectedTags,
                     categoryId: categoryId,
