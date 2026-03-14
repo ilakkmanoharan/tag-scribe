@@ -101,9 +101,11 @@ final class ShareViewController: SLComposeServiceViewController {
             promptToSignInAndOpenApp()
             return
         }
+        let userTypedTitle = (contentText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayTitle = userTypedTitle.isEmpty ? sharedTitle : userTypedTitle
         Task {
             do {
-                try await saveLink(url: urlString, title: sharedTitle)
+                try await saveLink(url: urlString, title: displayTitle)
                 await MainActor.run { extensionContext?.completeRequest(returningItems: nil, completionHandler: nil) }
             } catch {
                 if (error as NSError).code == 401 {

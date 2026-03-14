@@ -153,17 +153,18 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    const titleTrimmed = title.trim();
+    if (!titleTrimmed) {
+      setError("Title is required");
+      return;
+    }
+    const titleVal = titleTrimmed;
     const link = url.trim();
     const hasLink = link && (link.startsWith("http://") || link.startsWith("https://"));
     const hasImages = imageDataUrls.length > 0;
     const hasVideo = !!(videoUrl.trim() || videoDataUrl);
     const hasHighlight = !!highlight.trim();
-    const titleVal = title.trim() || undefined;
 
-    if (!hasLink && !hasImages && !hasVideo && !hasHighlight) {
-      setError("Add at least a link, a picture, a video, or some text.");
-      return;
-    }
     if (hasLink && !link.startsWith("http://") && !link.startsWith("https://")) {
       setError("Link must start with http:// or https://");
       return;
@@ -235,14 +236,14 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
           throw new Error(data.error || "Failed to save");
         }
       }
-      if (!hasLink && !hasImages && !hasVideo && hasHighlight) {
+      if (!hasLink && !hasImages && !hasVideo) {
         const headers = { "Content-Type": "application/json", ...await getAuthHeaders() };
         const res = await fetch("/api/items", {
           method: "POST",
           headers,
           body: JSON.stringify({
             type: "text",
-            content: highlight.trim(),
+            content: hasHighlight ? highlight.trim() : titleVal,
             title: titleVal,
             tags,
             categoryId: catId,
@@ -278,7 +279,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
     <form onSubmit={handleSubmit} className="mt-6 space-y-6" onPaste={handlePasteImage}>
       <div>
         <label htmlFor="title" className="mb-1 block text-sm font-medium text-[var(--text)]">
-          Title (optional)
+          Title
         </label>
         <input
           id="title"
@@ -546,7 +547,7 @@ export function AddForm({ categories: initialCategories }: { categories: Categor
       )}
       <button
         type="submit"
-        disabled={saving}
+        disabled={saving || !title.trim()}
         className="rounded-lg bg-[var(--accent)] px-6 py-2.5 font-medium text-white hover:opacity-90 disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save to library"}

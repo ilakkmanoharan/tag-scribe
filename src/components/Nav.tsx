@@ -7,6 +7,8 @@ const links = [
   { href: "/categories", label: "Categories" },
   { href: "/tags", label: "Tags" },
   { href: "/add", label: "Add" },
+  { href: "/about", label: "About" },
+  { href: "/support", label: "Support" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -20,12 +22,6 @@ export function Nav() {
             className="text-lg font-semibold text-[var(--accent)]"
           >
             Tag Scribe
-          </Link>
-          <Link
-            href="/support"
-            className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
-          >
-            Support
           </Link>
           {links.map(({ href, label }) => (
             <Link

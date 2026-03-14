@@ -87,6 +87,54 @@ final class APIClient {
         return try decoder.decode(Item.self, from: data)
     }
 
+    /// Upload an image item. API: POST /api/items with multipart/form-data (image file, title, caption, tags, categoryId).
+    func uploadImage(imageData: Data, mimeType: String, title: String?, caption: String?, tags: [String], categoryId: String) async throws -> Item {
+        let url = URL(string: baseURL + "/api/items")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+
+        var body = Data()
+        let ext = mimeType == "image/png" ? "png" : mimeType == "image/gif" ? "gif" : mimeType == "image/webp" ? "webp" : "jpg"
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.\(ext)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n".data(using: .utf8)!)
+        if let t = title, !t.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"title\"\r\n\r\n".data(using: .utf8)!)
+            body.append(t.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        if let c = caption, !c.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"caption\"\r\n\r\n".data(using: .utf8)!)
+            body.append(c.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"tags\"\r\n\r\n".data(using: .utf8)!)
+        body.append((try? JSONSerialization.data(withJSONObject: tags)) ?? "[]".data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"categoryId\"\r\n\r\n".data(using: .utf8)!)
+        body.append(categoryId.data(using: .utf8)!)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(Item.self, from: data)
+    }
+
     /// Update item: archive, category, or tags. API: PATCH /api/items/:id
     func updateItem(id: String, archived: Bool? = nil, categoryId: String? = nil, tags: [String]? = nil) async throws -> Item {
         let url = URL(string: baseURL + "/api/items/\(id)")!
