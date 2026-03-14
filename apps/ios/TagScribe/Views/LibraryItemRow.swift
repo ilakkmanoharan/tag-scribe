@@ -14,10 +14,19 @@ struct LibraryItemRow: View {
     @State private var isExpanded = false
     @State private var newTagInput = ""
     @State private var showAddTag = false
+    @State private var showEdit = false
     @State private var showMove = false
     @State private var showDeleteConfirm = false
     @State private var loading = false
     @State private var errorMessage: String?
+    @State private var editTitle = ""
+    @State private var editContent = ""
+    @State private var editHighlight = ""
+    @State private var editCaption = ""
+    @State private var editTags: [String] = []
+    @State private var editCategoryId: String?
+    @State private var editNewTagInput = ""
+    @State private var savingEdit = false
 
     private var contentURL: URL? {
         guard item.type == "link" || item.content.hasPrefix("http") else { return nil }
@@ -130,11 +139,25 @@ struct LibraryItemRow: View {
                         }
                     }
 
-                    Button {
-                        showAddTag = true
-                    } label: {
-                        Label("Add tag", systemImage: "plus.circle")
-                            .font(.subheadline)
+                    HStack(spacing: 12) {
+                        Button {
+                            showAddTag = true
+                        } label: {
+                            Label("Add tag", systemImage: "plus.circle")
+                                .font(.subheadline)
+                        }
+                        Button {
+                            editTitle = item.title ?? ""
+                            editContent = item.content
+                            editHighlight = item.highlight ?? ""
+                            editCaption = item.caption ?? ""
+                            editTags = item.tags
+                            editCategoryId = item.categoryId
+                            showEdit = true
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                                .font(.subheadline)
+                        }
                     }
 
                     if let err = errorMessage {
@@ -204,6 +227,104 @@ struct LibraryItemRow: View {
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
+        .sheet(isPresented: $showEdit) {
+            NavigationStack {
+                Form {
+                    Section("Title") {
+                        TextField("Optional title", text: $editTitle)
+                    }
+                    if item.type == "link" || item.type == "video" || item.type == "text" {
+                        Section(item.type == "link" ? "Link" : item.type == "video" ? "Video URL" : "Content") {
+                            TextField("URL or content", text: $editContent)
+                                .keyboardType(item.type == "text" ? .default : .URL)
+                                .textInputAutocapitalization(.never)
+                        }
+                    }
+                    if item.type == "link" {
+                        Section("Highlight") {
+                            TextField("Highlighted text", text: $editHighlight, axis: .vertical)
+                                .lineLimit(3...6)
+                        }
+                    }
+                    if item.type == "image" || item.type == "video" || item.type == "text" {
+                        Section("Caption") {
+                            TextField("Caption", text: $editCaption, axis: .vertical)
+                                .lineLimit(2...4)
+                        }
+                    }
+                    Section("Category") {
+                        Picker("Category", selection: Binding(
+                            get: { editCategoryId ?? "" },
+                            set: { editCategoryId = $0.isEmpty ? nil : $0 }
+                        )) {
+                            Text("None").tag("")
+                            ForEach(categories) { cat in
+                                Text(cat.name).tag(cat.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    Section("Tags") {
+                        ForEach(editTags, id: \.self) { tag in
+                            HStack {
+                                Text(tag)
+                                Spacer()
+                                Button("Remove") {
+                                    editTags.removeAll { $0 == tag }
+                                }
+                                .font(.caption)
+                            }
+                        }
+                        HStack {
+                            TextField("New tag", text: $editNewTagInput)
+                            Button("Add") {
+                                let t = editNewTagInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !t.isEmpty, !editTags.contains(where: { $0.lowercased() == t.lowercased() }) {
+                                    editTags.append(t)
+                                    editNewTagInput = ""
+                                }
+                            }
+                            .disabled(editNewTagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                        if !existingTags.filter({ !editTags.contains($0) }).isEmpty {
+                            Text("Existing — tap to add:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            FlowLayout(spacing: 6) {
+                                ForEach(existingTags.filter { !editTags.contains($0) }, id: \.self) { tag in
+                                    Button(tag) {
+                                        if !editTags.contains(where: { $0.lowercased() == tag.lowercased() }) {
+                                            editTags.append(tag)
+                                        }
+                                    }
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.secondary.opacity(0.2))
+                                    .clipShape(Capsule())
+                                }
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Edit item")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showEdit = false
+                        }
+                        .disabled(savingEdit)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            saveEdit()
+                        }
+                        .disabled(savingEdit)
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showMove) {
             NavigationStack {
                 List(categories) { cat in
@@ -259,6 +380,37 @@ struct LibraryItemRow: View {
 
     private func moveToCategory(_ categoryId: String) {
         performUpdate(categoryId: categoryId)
+    }
+
+    private func saveEdit() {
+        savingEdit = true
+        errorMessage = nil
+        Task {
+            do {
+                let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                let contentVal = (item.type == "link" || item.type == "video" || item.type == "text") ? editContent.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+                let highlightVal = item.type == "link" ? editHighlight.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+                let captionVal = (item.type == "image" || item.type == "video" || item.type == "text") ? editCaption.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+                _ = try await APIClient.shared.updateItem(
+                    id: item.id,
+                    categoryId: editCategoryId,
+                    tags: editTags,
+                    title: titleVal.isEmpty ? nil : titleVal,
+                    content: contentVal,
+                    highlight: highlightVal?.isEmpty == true ? nil : highlightVal,
+                    caption: captionVal?.isEmpty == true ? nil : captionVal
+                )
+                await MainActor.run {
+                    showEdit = false
+                }
+                await onUpdated()
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                }
+            }
+            await MainActor.run { savingEdit = false }
+        }
     }
 
     private func deleteItem() {

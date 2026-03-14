@@ -72,6 +72,14 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [savingTags, setSavingTags] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editHighlight, setEditHighlight] = useState("");
+  const [editCaption, setEditCaption] = useState("");
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +205,41 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   const removeTag = (t: string) => {
     saveTags(item.tags.filter((x) => x !== t));
   };
+
+  const saveEdit = async () => {
+    setSavingEdit(true);
+    try {
+      const headers = { "Content-Type": "application/json", ...await authHeaders() };
+      const body: Record<string, unknown> = {
+        title: editTitle.trim() || undefined,
+        highlight: editHighlight.trim() || undefined,
+        caption: editCaption.trim() || undefined,
+        tags: editTags,
+        categoryId: editCategoryId ?? undefined,
+      };
+      if (item.type === "link" || item.type === "video" || item.type === "text") {
+        body.content = editContent.trim() || "";
+      }
+      const res = await fetch(`/api/items/${item.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setEditOpen(false);
+      router.refresh();
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const addEditTag = (t: string) => {
+    const trimmed = t.trim();
+    if (!trimmed || editTags.some((x) => x.toLowerCase() === trimmed.toLowerCase())) return;
+    setEditTags([...editTags, trimmed]);
+  };
+
+  const removeEditTag = (t: string) => setEditTags(editTags.filter((x) => x !== t));
 
   const actions = (
     <div className="mt-2 flex items-center flex-wrap gap-1 border-t border-[var(--border)] pt-2">
@@ -327,13 +370,31 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setAddingTag(true)}
-          className="rounded border border-dashed border-[var(--border)] px-2 py-0.5 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-        >
-          + Add tag
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => setAddingTag(true)}
+            className="rounded border border-dashed border-[var(--border)] px-2 py-0.5 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            + Add tag
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditTitle(item.title ?? "");
+              setEditContent(item.content ?? "");
+              setEditHighlight(item.highlight ?? "");
+              setEditCaption(item.caption ?? "");
+              setEditTags([...item.tags]);
+              setEditCategoryId(item.categoryId);
+              setEditOpen(true);
+            }}
+            className="rounded border border-[var(--border)] px-2 py-0.5 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            title="Edit item"
+          >
+            Edit
+          </button>
+        </>
       )}
       {addingTag && existingTags.length > 0 && (
         <div className="w-full mt-1">
@@ -358,6 +419,7 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   );
 
   return (
+    <>
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
       {item.type === "link" && (
         <>
@@ -439,5 +501,135 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
       {tagsSection}
       {(showArchive || showUnarchive || showDelete) && actions}
     </div>
+    {editOpen && (
+      <div
+        className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50"
+        onClick={() => !savingEdit && setEditOpen(false)}
+        role="presentation"
+      >
+        <div
+          className="w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-labelledby="edit-item-title"
+        >
+          <h2 id="edit-item-title" className="text-lg font-medium text-[var(--text)] mb-3">Edit item</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Title</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
+                placeholder="Optional title"
+              />
+            </div>
+            {(item.type === "link" || item.type === "video" || item.type === "text") && (
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">
+                  {item.type === "link" ? "Link" : item.type === "video" ? "Video URL" : "Content"}
+                </label>
+                <input
+                  type="url"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
+                  placeholder={item.type === "video" ? "Video URL" : item.type === "link" ? "https://..." : "Text content"}
+                />
+              </div>
+            )}
+            {item.type === "link" && (
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Highlight</label>
+                <textarea
+                  value={editHighlight}
+                  onChange={(e) => setEditHighlight(e.target.value)}
+                  rows={2}
+                  className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none resize-none"
+                  placeholder="Highlighted text"
+                />
+              </div>
+            )}
+            {(item.type === "image" || item.type === "video" || item.type === "text") && (
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Caption</label>
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  rows={2}
+                  className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none resize-none"
+                  placeholder="Caption"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Category</label>
+              <select
+                value={editCategoryId ?? ""}
+                onChange={(e) => setEditCategoryId(e.target.value || null)}
+                className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
+              >
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Tags</label>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {editTags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-0.5 rounded bg-[var(--border)] px-2 py-0.5 text-[var(--text)]"
+                  >
+                    {t}
+                    <button type="button" onClick={() => removeEditTag(t)} className="text-[var(--muted)] hover:text-[var(--text)]" aria-label={`Remove ${t}`}>×</button>
+                  </span>
+                ))}
+                {existingTags.filter((t) => !editTags.some((x) => x.toLowerCase() === t.toLowerCase())).slice(0, 8).map((t) => (
+                  <button key={t} type="button" onClick={() => addEditTag(t)} className="rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    + {t}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  placeholder="New tag"
+                  className="flex-1 rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addEditTag((e.target as HTMLInputElement).value);
+                      (e.target as HTMLInputElement).value = "";
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setEditOpen(false)}
+              disabled={savingEdit}
+              className="rounded border border-[var(--border)] px-3 py-1.5 text-[var(--text)] hover:bg-[var(--border)] disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveEdit}
+              disabled={savingEdit}
+              className="rounded bg-[var(--accent)] px-3 py-1.5 text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {savingEdit ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

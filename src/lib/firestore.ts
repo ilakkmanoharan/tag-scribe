@@ -226,6 +226,41 @@ export async function updateItemTags(uid: string, id: string, tags: string[]): P
   return { ...existing, tags: normalized, updatedAt };
 }
 
+export type ItemUpdateFields = Partial<Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags">> & { archived?: boolean };
+
+export async function updateItem(uid: string, id: string, fields: ItemUpdateFields): Promise<Item | undefined> {
+  const existing = await getItemById(uid, id);
+  if (!existing) return undefined;
+  const col = userItems(uid);
+  if (!col) return undefined;
+  const updatedAt = now();
+  const updates: Record<string, unknown> = { updatedAt };
+  if (fields.title !== undefined) updates.title = fields.title ?? null;
+  if (fields.content !== undefined) updates.content = fields.content ?? "";
+  if (fields.highlight !== undefined) updates.highlight = fields.highlight ?? null;
+  if (fields.caption !== undefined) updates.caption = fields.caption ?? null;
+  if (fields.categoryId !== undefined) updates.categoryId = fields.categoryId ?? null;
+  if (Array.isArray(fields.tags)) {
+    updates.tags = fields.tags.map((t) => t.trim()).filter(Boolean);
+  }
+  if (typeof fields.archived === "boolean") {
+    updates.archivedAt = fields.archived ? updatedAt : null;
+  }
+  await col.doc(id).update(updates);
+  const merged: Item = {
+    ...existing,
+    ...(fields.title !== undefined && { title: fields.title ?? undefined }),
+    ...(fields.content !== undefined && { content: fields.content ?? "" }),
+    ...(fields.highlight !== undefined && { highlight: fields.highlight ?? undefined }),
+    ...(fields.caption !== undefined && { caption: fields.caption ?? undefined }),
+    ...(fields.categoryId !== undefined && { categoryId: fields.categoryId }),
+    ...(Array.isArray(fields.tags) && { tags: fields.tags.map((t) => t.trim()).filter(Boolean) }),
+    ...(typeof fields.archived === "boolean" && { archivedAt: fields.archived ? updatedAt : undefined }),
+    updatedAt,
+  };
+  return merged;
+}
+
 export async function deleteItem(uid: string, id: string): Promise<boolean> {
   const col = userItems(uid);
   if (!col) return false;

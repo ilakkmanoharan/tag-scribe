@@ -15,42 +15,48 @@ export async function PATCH(
     }
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const { archived, categoryId, tags } = body as { archived?: boolean; categoryId?: string; tags?: string[] };
+    const {
+      archived,
+      categoryId,
+      tags,
+      title,
+      content,
+      highlight,
+      caption,
+    } = body as {
+      archived?: boolean;
+      categoryId?: string;
+      tags?: string[];
+      title?: string;
+      content?: string;
+      highlight?: string;
+      caption?: string;
+    };
+    const updateFields: firestore.ItemUpdateFields = {};
+    if (typeof archived === "boolean") updateFields.archived = archived;
+    if (typeof categoryId === "string") updateFields.categoryId = categoryId.trim() || null;
+    if (Array.isArray(tags)) updateFields.tags = tags;
+    if (title !== undefined) updateFields.title = typeof title === "string" ? title : undefined;
+    if (content !== undefined) updateFields.content = typeof content === "string" ? content : "";
+    if (highlight !== undefined) updateFields.highlight = typeof highlight === "string" ? highlight : undefined;
+    if (caption !== undefined) updateFields.caption = typeof caption === "string" ? caption : undefined;
+
+    if (Object.keys(updateFields).length === 0) {
+      return NextResponse.json(
+        { error: "Provide at least one of: archived, categoryId, tags, title, content, highlight, caption" },
+        { status: 400 }
+      );
+    }
+
     if (result.uid) {
-      if (typeof categoryId === "string" && categoryId.trim()) {
-        const item = await firestore.updateItemCategory(result.uid, id, categoryId.trim());
-        if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
-        return NextResponse.json(item);
-      }
-      if (Array.isArray(tags)) {
-        const item = await firestore.updateItemTags(result.uid, id, tags);
-        if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
-        return NextResponse.json(item);
-      }
-      if (typeof archived === "boolean") {
-        const item = await firestore.setItemArchived(result.uid, id, archived);
-        if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
-        return NextResponse.json(item);
-      }
-      return NextResponse.json({ error: "Provide archived (boolean), categoryId (string), or tags (string[])" }, { status: 400 });
-    }
-    const { setItemArchived, updateItemCategory, updateItemTags } = await import("@/lib/db");
-    if (typeof categoryId === "string" && categoryId.trim()) {
-      const item = updateItemCategory(id, categoryId.trim());
+      const item = await firestore.updateItem(result.uid, id, updateFields);
       if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
       return NextResponse.json(item);
     }
-    if (Array.isArray(tags)) {
-      const item = updateItemTags(id, tags);
-      if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
-      return NextResponse.json(item);
-    }
-    if (typeof archived === "boolean") {
-      const item = setItemArchived(id, archived);
-      if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
-      return NextResponse.json(item);
-    }
-    return NextResponse.json({ error: "Provide archived (boolean), categoryId (string), or tags (string[])" }, { status: 400 });
+    const { updateItem } = await import("@/lib/db");
+    const item = updateItem(id, updateFields);
+    if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    return NextResponse.json(item);
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Failed to update item" }, { status: 500 });

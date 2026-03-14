@@ -191,6 +191,47 @@ export function updateItemTags(id: string, tags: string[]): Item | undefined {
   return rowToItem({ ...row, tags: JSON.stringify(normalized), updated_at: now });
 }
 
+export type ItemUpdateFields = Partial<Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags">> & { archived?: boolean };
+
+export function updateItem(id: string, fields: ItemUpdateFields): Item | undefined {
+  const database = getDb();
+  const row = database.prepare("SELECT * FROM items WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  if (!row) return undefined;
+  const now = new Date().toISOString();
+  const updates: Record<string, unknown> = { ...row, updated_at: now };
+  if (fields.title !== undefined) updates.title = fields.title ?? null;
+  if (fields.content !== undefined) updates.content = fields.content ?? "";
+  if (fields.highlight !== undefined) updates.highlight = fields.highlight ?? null;
+  if (fields.caption !== undefined) updates.caption = fields.caption ?? null;
+  if (fields.categoryId !== undefined) updates.category_id = fields.categoryId ?? null;
+  if (Array.isArray(fields.tags)) {
+    const normalized = fields.tags.map((t) => t.trim()).filter(Boolean);
+    updates.tags = JSON.stringify(normalized);
+  }
+  if (typeof fields.archived === "boolean") {
+    updates.archived_at = fields.archived ? now : null;
+  }
+  database
+    .prepare(
+      `UPDATE items SET
+        title = ?, content = ?, highlight = ?, caption = ?,
+        tags = ?, category_id = ?, updated_at = ?, archived_at = ?
+      WHERE id = ?`
+    )
+    .run(
+      updates.title ?? row.title,
+      updates.content ?? row.content,
+      updates.highlight ?? row.highlight,
+      updates.caption ?? row.caption,
+      updates.tags ?? row.tags,
+      updates.category_id ?? row.category_id,
+      now,
+      updates.archived_at ?? row.archived_at,
+      id
+    );
+  return rowToItem({ ...row, ...updates, updated_at: now });
+}
+
 export function deleteItem(id: string): boolean {
   const database = getDb();
   const result = database.prepare("DELETE FROM items WHERE id = ?").run(id);
