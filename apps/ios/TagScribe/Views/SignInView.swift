@@ -3,7 +3,6 @@ import AuthenticationServices
 
 struct SignInView: View {
     @State private var errorMessage: String?
-    @State private var loading = false
     @State private var email = ""
     @State private var password = ""
     @State private var emailPasswordLoading = false
@@ -13,15 +12,29 @@ struct SignInView: View {
     @State private var forgotPasswordLoading = false
     @State private var forgotPasswordLink: URL?
     @State private var showForgotSuccess = false
+    @StateObject private var appleSignInRunner = AppleSignInRunner()
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Login with Apple too")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    SignInWithAppleButtonView(errorMessage: $errorMessage, loading: $loading)
+                    Button {
+                        appleSignInRunner.start()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "apple.logo")
+                                .font(.title2)
+                            Text(appleSignInRunner.loading ? "Signing in…" : "Login with Apple")
+                                .font(.headline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .background(Color.black)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .disabled(appleSignInRunner.loading)
                 } header: {
                     Text("Tag Scribe")
                 }
@@ -53,7 +66,7 @@ struct SignInView: View {
                         .font(.caption)
                 }
 
-                if let err = errorMessage {
+                if let err = errorMessage ?? appleSignInRunner.errorMessage {
                     Section {
                         Text(err)
                             .foregroundStyle(.red)
@@ -139,85 +152,53 @@ struct SignInView: View {
     }
 }
 
-private struct SignInWithAppleButtonView: View {
-    @Binding var errorMessage: String?
-    @Binding var loading: Bool
+private final class AppleSignInRunner: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    @Published var errorMessage: String?
+    @Published var loading = false
 
-    var body: some View {
-        SignInWithAppleButtonRepresentable(errorMessage: $errorMessage, loading: $loading)
-            .frame(height: 50)
-            .frame(maxWidth: .infinity)
-    }
-}
-
-private struct SignInWithAppleButtonRepresentable: UIViewRepresentable {
-    @Binding var errorMessage: String?
-    @Binding var loading: Bool
-
-    func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
-        let button = ASAuthorizationAppleIDButton(type: .signIn, style: .black)
-        button.cornerRadius = 8
-        button.addTarget(context.coordinator, action: #selector(Coordinator.handleTap), for: .touchUpInside)
-        return button
+    func start() {
+        errorMessage = nil
+        loading = true
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.email]
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        controller.performRequests()
     }
 
-    func updateUIView(_ uiView: ASAuthorizationAppleIDButton, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-        let parent: SignInWithAppleButtonRepresentable
-
-        init(_ parent: SignInWithAppleButtonRepresentable) {
-            self.parent = parent
-        }
-
-        @objc func handleTap() {
-            parent.errorMessage = nil
-            parent.loading = true
-            let request = ASAuthorizationAppleIDProvider().createRequest()
-            request.requestedScopes = [.email]
-            let controller = ASAuthorizationController(authorizationRequests: [request])
-            controller.delegate = self
-            controller.presentationContextProvider = self
-            controller.performRequests()
-        }
-
-        func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-            Task {
-                do {
-                    try await AuthManager.shared.signInWithApple(authorization: authorization)
-                    await MainActor.run { parent.loading = false }
-                } catch {
-                    await MainActor.run {
-                        parent.errorMessage = error.localizedDescription
-                        parent.loading = false
-                    }
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        Task {
+            do {
+                try await AuthManager.shared.signInWithApple(authorization: authorization)
+                await MainActor.run { loading = false }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    loading = false
                 }
             }
         }
+    }
 
-        func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-            let authError = error as NSError
-            if authError.code == ASAuthorizationError.canceled.rawValue {
-                parent.errorMessage = nil
-            } else {
-                parent.errorMessage = error.localizedDescription
-            }
-            parent.loading = false
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        let authError = error as NSError
+        if authError.code == ASAuthorizationError.canceled.rawValue {
+            errorMessage = nil
+        } else {
+            errorMessage = error.localizedDescription
         }
+        loading = false
+    }
 
-        func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-            guard let window = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .flatMap(\.windows)
-                .first(where: { $0.isKeyWindow }) else {
-                return ASPresentationAnchor()
-            }
-            return window
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap(\.windows)
+            .first(where: { $0.isKeyWindow }) else {
+            return ASPresentationAnchor()
         }
+        return window
     }
 }
 
