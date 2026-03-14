@@ -1,77 +1,63 @@
 import SwiftUI
 import AuthenticationServices
 
+enum AuthTab: String, CaseIterable {
+    case signIn = "Sign In"
+    case login = "Log In"
+}
+
 struct SignInView: View {
+    @State private var selectedTab: AuthTab = .login
     @State private var errorMessage: String?
     @State private var email = ""
     @State private var password = ""
+    @State private var confirmPassword = ""
     @State private var emailPasswordLoading = false
-    @State private var isSignUp = false
     @State private var forgotPasswordEmail = ""
     @State private var showForgotPassword = false
     @State private var forgotPasswordLoading = false
-    @State private var forgotPasswordLink: URL?
     @State private var showForgotSuccess = false
     @StateObject private var appleSignInRunner = AppleSignInRunner()
+
+    // Inline validation (Sign In)
+    @State private var emailError: String?
+    @State private var passwordError: String?
+    @State private var confirmPasswordError: String?
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Button {
-                        appleSignInRunner.start()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "apple.logo")
-                                .font(.title2)
-                            Text(appleSignInRunner.loading ? "Signing in…" : "Login with Apple")
-                                .font(.headline)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .foregroundStyle(.white)
-                    }
-                    .buttonStyle(.plain)
-                    .background(Color.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .disabled(appleSignInRunner.loading)
-                } header: {
                     Text("Tag Scribe")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    EmptyView()
                 }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 4, trailing: 0))
 
                 Section {
-                    Button(isSignUp ? "Already have an account? Login" : "Need an account? Sign up") {
-                        isSignUp.toggle()
-                    }
-                    .foregroundStyle(.blue)
-                    .font(.subheadline)
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .autocapitalization(.none)
-                    SecureField("Password", text: $password)
-                        .textContentType(isSignUp ? .newPassword : .password)
-                    Button(emailPasswordLoading ? "…" : (isSignUp ? "Sign up" : "Login")) {
-                        Task { await submitEmailPassword() }
-                    }
-                    .disabled(email.isEmpty || password.isEmpty || emailPasswordLoading)
-                    Button("Forgot password?") {
-                        forgotPasswordEmail = email
-                        showForgotPassword = true
-                    }
-                    .foregroundStyle(.blue)
-                } header: {
-                    Text("Or with email")
-                } footer: {
-                    Text(isSignUp ? "Have an account? Tap Login above to sign in." : "New here? Tap Sign up above to create an account.")
-                        .font(.caption)
+                    tabSwitcher
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
+
+                switch selectedTab {
+                case .signIn:
+                    signInTabContent
+                case .login:
+                    loginTabContent
                 }
 
                 if let err = errorMessage ?? appleSignInRunner.errorMessage {
                     Section {
                         Text(err)
-                            .foregroundStyle(.red)
                             .font(.caption)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .listRowBackground(Color.red.opacity(0.1))
                 }
             }
             .accessibilityIdentifier("signInView")
@@ -81,6 +67,241 @@ struct SignInView: View {
             }
             .onOpenURL { url in
                 if showForgotSuccess { showForgotSuccess = false }
+            }
+            .animation(.easeInOut(duration: 0.2), value: selectedTab)
+        }
+    }
+
+    // MARK: - Tab Switcher (44pt height, 12pt radius, systemGray6)
+    private var tabSwitcher: some View {
+        HStack(spacing: 0) {
+            ForEach(AuthTab.allCases, id: \.self) { tab in
+                Button {
+                    clearErrors()
+                    selectedTab = tab
+                } label: {
+                    Text(tab.rawValue)
+                        .font(selectedTab == tab ? .headline.weight(.semibold) : .body)
+                        .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                }
+                .buttonStyle(.plain)
+                .background(
+                    Group {
+                        if selectedTab == tab {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)
+                        } else {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.clear)
+                        }
+                    }
+                )
+                .accessibilityLabel(selectedTab == tab ? "\(tab.rawValue) tab selected" : "Switch to \(tab.rawValue) tab")
+            }
+        }
+        .padding(4)
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - Sign In Tab (Create Account)
+    private var signInTabContent: some View {
+        Group {
+            Section {
+                appleButton(label: "Sign in with Apple")
+            } header: {
+                EmptyView()
+            }
+
+            Section {
+                dividerText("or with email")
+            }
+            .listRowBackground(Color.clear)
+
+            Section {
+                emailField
+                if let msg = emailError {
+                    Text(msg).font(.caption).foregroundStyle(.red)
+                }
+                passwordField(isNew: true)
+                if let msg = passwordError {
+                    Text(msg).font(.caption).foregroundStyle(.red)
+                }
+                confirmPasswordField
+                if let msg = confirmPasswordError {
+                    Text(msg).font(.caption).foregroundStyle(.red)
+                }
+                Button(emailPasswordLoading ? "Creating…" : "Create Account") {
+                    Task { await submitSignUp() }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .disabled(!signUpFormValid || emailPasswordLoading)
+                .buttonStyle(.borderedProminent)
+                Button("Already have an account? Log In") {
+                    clearErrors()
+                    selectedTab = .login
+                }
+                .foregroundStyle(.blue)
+                .font(.subheadline)
+            } header: {
+                EmptyView()
+            }
+        }
+    }
+
+    // MARK: - Log In Tab (Existing User)
+    private var loginTabContent: some View {
+        Group {
+            Section {
+                appleButton(label: "Login with Apple")
+            } header: {
+                EmptyView()
+            }
+
+            Section {
+                dividerText("or with email")
+            }
+            .listRowBackground(Color.clear)
+
+            Section {
+                emailField
+                passwordField(isNew: false)
+                Button(emailPasswordLoading ? "Signing in…" : "Log In") {
+                    Task { await submitLogin() }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .disabled(!loginFormValid || emailPasswordLoading)
+                .buttonStyle(.borderedProminent)
+                Button("Forgot password?") {
+                    forgotPasswordEmail = email
+                    showForgotPassword = true
+                }
+                .foregroundStyle(.blue)
+                Button("New here? Sign In") {
+                    clearErrors()
+                    selectedTab = .signIn
+                }
+                .foregroundStyle(.blue)
+                .font(.subheadline)
+            } header: {
+                EmptyView()
+            }
+        }
+    }
+
+    private func appleButton(label: String) -> some View {
+        Button {
+            appleSignInRunner.start()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "apple.logo")
+                    .font(.title2)
+                Text(appleSignInRunner.loading ? "Signing in…" : label)
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .foregroundStyle(.white)
+        }
+        .buttonStyle(.plain)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .disabled(appleSignInRunner.loading)
+        .accessibilityLabel(label)
+    }
+
+    private func dividerText(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(Color(.systemGray2))
+            .frame(maxWidth: .infinity)
+    }
+
+    private var emailField: some View {
+        TextField("Email", text: $email)
+            .textContentType(.emailAddress)
+            .autocapitalization(.none)
+    }
+
+    private func passwordField(isNew: Bool) -> some View {
+        SecureField("Password", text: $password)
+            .textContentType(isNew ? .newPassword : .password)
+    }
+
+    private var confirmPasswordField: some View {
+        SecureField("Confirm Password", text: $confirmPassword)
+            .textContentType(.newPassword)
+    }
+
+    private var signUpFormValid: Bool {
+        let e = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !e.isEmpty && !password.isEmpty && password == confirmPassword
+    }
+
+    private var loginFormValid: Bool {
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
+    }
+
+    private func clearErrors() {
+        errorMessage = nil
+        appleSignInRunner.errorMessage = nil
+        emailError = nil
+        passwordError = nil
+        confirmPasswordError = nil
+    }
+
+    private func validateSignUp() -> Bool {
+        emailError = nil
+        passwordError = nil
+        confirmPasswordError = nil
+        let e = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        if e.isEmpty {
+            emailError = "Email is required."
+            return false
+        }
+        if !e.contains("@") || !e.contains(".") {
+            emailError = "Invalid email."
+            return false
+        }
+        if password.count < 6 {
+            passwordError = "Password must be at least 6 characters."
+            return false
+        }
+        if password != confirmPassword {
+            confirmPasswordError = "Passwords don't match."
+            return false
+        }
+        return true
+    }
+
+    private func submitSignUp() async {
+        guard validateSignUp() else { return }
+        errorMessage = nil
+        emailPasswordLoading = true
+        defer { emailPasswordLoading = false }
+        do {
+            try await AuthManager.shared.signUp(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func submitLogin() async {
+        errorMessage = nil
+        emailPasswordLoading = true
+        defer { emailPasswordLoading = false }
+        do {
+            try await AuthManager.shared.login(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
             }
         }
     }
@@ -115,29 +336,12 @@ struct SignInView: View {
         }
     }
 
-    private func submitEmailPassword() async {
-        errorMessage = nil
-        emailPasswordLoading = true
-        defer { emailPasswordLoading = false }
-        do {
-            if isSignUp {
-                try await AuthManager.shared.signUp(email: email, password: password)
-            } else {
-                try await AuthManager.shared.login(email: email, password: password)
-            }
-        } catch {
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-            }
-        }
-    }
-
     private func requestForgotPassword() async {
-        let email = forgotPasswordEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !email.isEmpty else { return }
+        let emailToUse = forgotPasswordEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !emailToUse.isEmpty else { return }
         await MainActor.run { forgotPasswordLoading = true }
         do {
-            let link = try await AuthManager.shared.forgotPassword(email: email)
+            let link = try await AuthManager.shared.forgotPassword(email: emailToUse)
             await MainActor.run {
                 forgotPasswordLoading = false
                 showForgotSuccess = true
@@ -152,6 +356,7 @@ struct SignInView: View {
     }
 }
 
+// MARK: - Apple Sign In Runner
 private final class AppleSignInRunner: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     @Published var errorMessage: String?
     @Published var loading = false
