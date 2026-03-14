@@ -18,11 +18,12 @@ struct SignInView: View {
         NavigationStack {
             Form {
                 Section {
+                    Text("Login with Apple too")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     SignInWithAppleButtonView(errorMessage: $errorMessage, loading: $loading)
                 } header: {
                     Text("Tag Scribe")
-                } footer: {
-                    Text("Sign in with Apple to use your library on this device and in the Share Sheet. Your account is the same as on the web.")
                 }
 
                 Section {
