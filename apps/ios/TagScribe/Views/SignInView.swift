@@ -28,9 +28,15 @@ struct SignInView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Tag Scribe")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        Image("Logo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 56, height: 56)
+                        Text("Tag Scribe")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
                 } header: {
                     EmptyView()
                 }
