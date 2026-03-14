@@ -157,7 +157,7 @@ struct SignInView: View {
     private var loginTabContent: some View {
         Group {
             Section {
-                appleButton(label: "Login with Apple")
+                appleButton(label: "Sign in with Apple")
             } header: {
                 EmptyView()
             }
