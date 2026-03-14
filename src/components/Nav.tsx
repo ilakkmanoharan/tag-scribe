@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NavAuth } from "@/components/NavAuth";
+import { NavSettingsDropdown } from "@/components/NavSettingsDropdown";
 
 const links = [
   { href: "/", label: "Library" },
@@ -7,9 +8,6 @@ const links = [
   { href: "/categories", label: "Categories" },
   { href: "/tags", label: "Tags" },
   { href: "/add", label: "Add" },
-  { href: "/about", label: "About" },
-  { href: "/support", label: "Support" },
-  { href: "/settings", label: "Settings" },
 ];
 
 export function Nav() {
@@ -33,7 +31,10 @@ export function Nav() {
             </Link>
           ))}
         </div>
-        <NavAuth />
+        <div className="flex items-center gap-3">
+          <NavAuth />
+          <NavSettingsDropdown />
+        </div>
       </div>
     </nav>
   );
