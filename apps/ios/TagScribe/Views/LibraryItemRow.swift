@@ -24,6 +24,11 @@ struct LibraryItemRow: View {
         return URL(string: item.content)
     }
 
+    private var imageURL: URL? {
+        guard item.type == "image", let url = URL(string: item.content), item.content.hasPrefix("http") else { return nil }
+        return url
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
@@ -61,7 +66,31 @@ struct LibraryItemRow: View {
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: 10) {
-                    if let url = contentURL {
+                    if let url = imageURL {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxHeight: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            case .failure:
+                                Link(destination: url) {
+                                    Label("View image", systemImage: "photo")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.blue)
+                                }
+                            case .empty:
+                                ProgressView()
+                                    .frame(height: 120)
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    }
+
+                    if let url = contentURL, item.type != "image" {
                         Link(destination: url) {
                             HStack(spacing: 6) {
                                 Image(systemName: "link")

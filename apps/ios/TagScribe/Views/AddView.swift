@@ -41,7 +41,7 @@ struct AddView: View {
                 Text("Display title is required. Link, video URL, and pictures are optional.")
             }
 
-            Section("Pictures (optional) — add multiple") {
+            Section {
                 PhotosPicker(
                     selection: $selectedPhotoItems,
                     maxSelectionCount: 20,
@@ -67,6 +67,10 @@ struct AddView: View {
                         }
                     }
                 }
+            } header: {
+                Text("Pictures (optional) — add multiple")
+            } footer: {
+                Text("Each photo is saved as a separate item in your library.")
             }
 
             Section("Highlight (optional)") {
