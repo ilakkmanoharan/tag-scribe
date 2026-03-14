@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Library tab: all saved items. Expandable rows with link, tags, Add tag, Archive, Move, Delete.
+/// Library tab: all saved items (including Inbox / shared via Share Sheet). Expandable rows with link, tags, Add tag, Archive, Move, Delete.
 struct LibraryView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var items: [Item] = []
     @State private var categories: [Category] = []
     @State private var existingTags: [String] = []
@@ -57,6 +58,11 @@ struct LibraryView: View {
         .navigationTitle("Library")
         .refreshable { await load() }
         .task { await load() }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await load() }
+            }
+        }
     }
 
     private func load() async {

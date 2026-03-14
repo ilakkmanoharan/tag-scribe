@@ -25,6 +25,11 @@ struct SignInView: View {
                 }
 
                 Section {
+                    if isSignUp {
+                        Button("Already have an account? Login") { isSignUp = false }
+                            .foregroundStyle(.blue)
+                            .font(.subheadline)
+                    }
                     TextField("Email", text: $email)
                         .textContentType(.emailAddress)
                         .autocapitalization(.none)
@@ -34,17 +39,22 @@ struct SignInView: View {
                         Task { await submitEmailPassword() }
                     }
                     .disabled(email.isEmpty || password.isEmpty || emailPasswordLoading)
-                    if isSignUp {
-                        Button("Already have an account? Login") { isSignUp = false }
-                    } else {
+                    if !isSignUp {
                         Button("No account? Sign up") { isSignUp = true }
+                            .foregroundStyle(.blue)
                     }
                     Button("Forgot password?") {
                         forgotPasswordEmail = email
                         showForgotPassword = true
                     }
+                    .foregroundStyle(.blue)
                 } header: {
                     Text("Or with email")
+                } footer: {
+                    if isSignUp {
+                        Text("Have an account? Tap Login above to sign in instead.")
+                            .font(.caption)
+                    }
                 }
 
                 if let err = errorMessage {
