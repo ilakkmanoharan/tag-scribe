@@ -30,7 +30,7 @@ async function main() {
   }
 
   const toMerge: { email: string; primary: (typeof primaryOnly)[0]; secondaries: (typeof primaryOnly)[0][] }[] = [];
-  for (const [email, list] of byEmail) {
+  for (const [email, list] of Array.from(byEmail)) {
     if (list.length <= 1) continue;
     const withEmail = list.filter((u) => u.providers.includes("email"));
     const primary = withEmail[0] ?? list[0];
