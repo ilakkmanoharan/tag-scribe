@@ -25,11 +25,11 @@ struct SignInView: View {
                 }
 
                 Section {
-                    if isSignUp {
-                        Button("Already have an account? Login") { isSignUp = false }
-                            .foregroundStyle(.blue)
-                            .font(.subheadline)
+                    Button(isSignUp ? "Already have an account? Login" : "Need an account? Sign up") {
+                        isSignUp.toggle()
                     }
+                    .foregroundStyle(.blue)
+                    .font(.subheadline)
                     TextField("Email", text: $email)
                         .textContentType(.emailAddress)
                         .autocapitalization(.none)
@@ -39,10 +39,10 @@ struct SignInView: View {
                         Task { await submitEmailPassword() }
                     }
                     .disabled(email.isEmpty || password.isEmpty || emailPasswordLoading)
-                    if !isSignUp {
-                        Button("No account? Sign up") { isSignUp = true }
-                            .foregroundStyle(.blue)
+                    Button(isSignUp ? "Already have an account? Login" : "No account? Sign up") {
+                        isSignUp.toggle()
                     }
+                    .foregroundStyle(.blue)
                     Button("Forgot password?") {
                         forgotPasswordEmail = email
                         showForgotPassword = true
@@ -51,10 +51,8 @@ struct SignInView: View {
                 } header: {
                     Text("Or with email")
                 } footer: {
-                    if isSignUp {
-                        Text("Have an account? Tap Login above to sign in instead.")
-                            .font(.caption)
-                    }
+                    Text(isSignUp ? "Have an account? Tap Login above to sign in." : "New here? Tap Sign up above to create an account.")
+                        .font(.caption)
                 }
 
                 if let err = errorMessage {

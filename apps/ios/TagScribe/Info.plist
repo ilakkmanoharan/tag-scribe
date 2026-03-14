@@ -53,5 +53,18 @@
 	<string>https://tag-scribe.vercel.app</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>app.tagscribe.ios</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tagscribe</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
