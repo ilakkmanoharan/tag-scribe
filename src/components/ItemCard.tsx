@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Item } from "@/types";
@@ -80,6 +80,9 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editImageDataUrls, setEditImageDataUrls] = useState<string[]>([]);
+  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,7 +212,26 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   const saveEdit = async () => {
     setSavingEdit(true);
     try {
-      const headers = { "Content-Type": "application/json", ...await authHeaders() };
+      const authH = await authHeaders();
+      if (item.type === "image" && editImageDataUrls.length > 0) {
+        const dataUrl = editImageDataUrls[0];
+        const blob = await (await fetch(dataUrl)).blob();
+        const ext = dataUrl.startsWith("data:image/png") ? "png" : dataUrl.startsWith("data:image/webp") ? "webp" : dataUrl.startsWith("data:image/gif") ? "gif" : "jpg";
+        const formData = new FormData();
+        formData.append("image", blob, `image.${ext}`);
+        const putRes = await fetch(`/api/items/${item.id}/image`, {
+          method: "PUT",
+          headers: authH,
+          body: formData,
+        });
+        if (!putRes.ok) throw new Error("Failed to replace image");
+      }
+      const contentVal =
+        item.type === "video"
+          ? editVideoUrl.trim()
+          : item.type === "link" || item.type === "text"
+            ? editContent.trim()
+            : undefined;
       const body: Record<string, unknown> = {
         title: editTitle.trim() || undefined,
         highlight: editHighlight.trim() || undefined,
@@ -217,12 +239,10 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
         tags: editTags,
         categoryId: editCategoryId ?? undefined,
       };
-      if (item.type === "link" || item.type === "video" || item.type === "text") {
-        body.content = editContent.trim() || "";
-      }
+      if (contentVal !== undefined) body.content = contentVal || "";
       const res = await fetch(`/api/items/${item.id}`, {
         method: "PATCH",
-        headers,
+        headers: { "Content-Type": "application/json", ...authH },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to save");
@@ -240,6 +260,43 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
   };
 
   const removeEditTag = (t: string) => setEditTags(editTags.filter((x) => x !== t));
+
+  const handleEditDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (!files?.length) return;
+    const imageFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (f.type.startsWith("image/")) imageFiles.push(f);
+    }
+    imageFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () =>
+        setEditImageDataUrls((prev) => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const handleEditDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleEditPasteImage = useCallback((e: React.ClipboardEvent) => {
+    const file = e.clipboardData.files?.[0];
+    if (file?.type.startsWith("image/")) {
+      e.preventDefault();
+      const reader = new FileReader();
+      reader.onload = () =>
+        setEditImageDataUrls((prev) => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+    }
+  }, []);
+
+  const removeEditImage = (index: number) => {
+    setEditImageDataUrls((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const actions = (
     <div className="mt-2 flex items-center flex-wrap gap-1 border-t border-[var(--border)] pt-2">
@@ -387,6 +444,9 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
               setEditCaption(item.caption ?? "");
               setEditTags([...item.tags]);
               setEditCategoryId(item.categoryId);
+              setEditImageDataUrls([]);
+              setEditVideoUrl(item.type === "video" ? item.content : "");
+              setCategoryOpen(false);
               setEditOpen(true);
             }}
             className="rounded border border-[var(--border)] px-2 py-0.5 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -503,118 +563,221 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
     </div>
     {editOpen && (
       <div
-        className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50"
-        onClick={() => !savingEdit && setEditOpen(false)}
+        className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 overflow-y-auto"
+        onClick={() => { if (!savingEdit) { setCategoryOpen(false); setEditOpen(false); } }}
         role="presentation"
       >
         <div
-          className="w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl"
+          className="w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl my-4"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-labelledby="edit-item-title"
+          onPaste={handleEditPasteImage}
         >
-          <h2 id="edit-item-title" className="text-lg font-medium text-[var(--text)] mb-3">Edit item</h2>
-          <div className="space-y-3">
+          <h2 id="edit-item-title" className="text-xl font-semibold text-[var(--text)] mb-1">Edit item</h2>
+          <p className="text-sm text-[var(--muted)] mb-6">
+            Edit title, link, pictures, video, highlight, tags, and category. All optional.
+          </p>
+          <div className="space-y-6">
             <div>
-              <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Title</label>
+              <label htmlFor="edit-title" className="mb-1 block text-sm font-medium text-[var(--text)]">Title</label>
               <input
+                id="edit-title"
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
-                placeholder="Optional title"
+                placeholder="Display title for this item"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
               />
             </div>
-            {(item.type === "link" || item.type === "video" || item.type === "text") && (
+            {item.type === "image" && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--text)]">Pictures (optional) — replace</label>
+              <div
+                onDrop={handleEditDrop}
+                onDragOver={handleEditDragOver}
+                className="min-h-[100px] rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] p-4"
+              >
+                {!editImageDataUrls.length && (
+                  <div className="flex flex-wrap gap-3 mb-2">
+                    <div className="relative">
+                      <img
+                        src={imageSrc ?? `/api/items/${item.id}/image`}
+                        alt="Current"
+                        className="h-24 w-24 rounded object-cover"
+                      />
+                      <span className="absolute bottom-0 left-0 right-0 text-center text-xs text-[var(--muted)] bg-black/50 rounded-b">Current</span>
+                    </div>
+                  </div>
+                )}
+                {editImageDataUrls.length > 0 ? (
+                  <div className="flex flex-wrap gap-3">
+                    {editImageDataUrls.map((dataUrl, index) => (
+                      <div key={index} className="relative">
+                        <img src={dataUrl} alt={`New ${index + 1}`} className="h-24 w-24 rounded object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeEditImage(index)}
+                          className="absolute -right-1 -top-1 rounded-full bg-[var(--border)] p-0.5 text-[var(--text)] hover:bg-red-500/20 hover:text-red-400"
+                          aria-label={`Remove picture ${index + 1}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <p className="mt-2 text-center text-sm text-[var(--muted)]">
+                  Paste or drop pictures here to replace
+                </p>
+              </div>
+            </div>
+            )}
+            <div style={{ display: item.type === "video" ? undefined : "none" }}>
+              <label className="mb-1 block text-sm font-medium text-[var(--text)]">Video (optional)</label>
+              <input
+                type="url"
+                value={editVideoUrl}
+                onChange={(e) => setEditVideoUrl(e.target.value)}
+                placeholder="Paste or drop a video URL (e.g. https://...mp4)"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+              />
+            </div>
+            {(item.type === "link" || item.type === "text") && (
               <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">
-                  {item.type === "link" ? "Link" : item.type === "video" ? "Video URL" : "Content"}
+                <label htmlFor="edit-content" className="mb-1 block text-sm font-medium text-[var(--text)]">
+                  {item.type === "link" ? "Link" : "Content"}
                 </label>
                 <input
-                  type="url"
+                  id="edit-content"
+                  type={item.type === "link" ? "url" : "text"}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
-                  placeholder={item.type === "video" ? "Video URL" : item.type === "link" ? "https://..." : "Text content"}
+                  placeholder={item.type === "link" ? "https://..." : "Text content"}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                 />
               </div>
             )}
-            {item.type === "link" && (
-              <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Highlight</label>
-                <textarea
-                  value={editHighlight}
-                  onChange={(e) => setEditHighlight(e.target.value)}
-                  rows={2}
-                  className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none resize-none"
-                  placeholder="Highlighted text"
-                />
-              </div>
-            )}
+            <div>
+              <label htmlFor="edit-highlight" className="mb-1 block text-sm font-medium text-[var(--text)]">Highlight (optional)</label>
+              <textarea
+                id="edit-highlight"
+                value={editHighlight}
+                onChange={(e) => setEditHighlight(e.target.value)}
+                placeholder="Paste a sentence or quote from the article"
+                rows={2}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+              />
+            </div>
             {(item.type === "image" || item.type === "video" || item.type === "text") && (
               <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Caption</label>
+                <label className="mb-1 block text-sm font-medium text-[var(--text)]">Caption (optional)</label>
                 <textarea
                   value={editCaption}
                   onChange={(e) => setEditCaption(e.target.value)}
-                  rows={2}
-                  className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none resize-none"
                   placeholder="Caption"
+                  rows={2}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                 />
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Category</label>
-              <select
-                value={editCategoryId ?? ""}
-                onChange={(e) => setEditCategoryId(e.target.value || null)}
-                className="w-full rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--muted)] mb-0.5">Tags</label>
-              <div className="flex flex-wrap gap-1 mb-1">
+              <label className="mb-1 block text-sm font-medium text-[var(--text)]">Tags (optional)</label>
+              <div className="flex flex-wrap gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2">
                 {editTags.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex items-center gap-0.5 rounded bg-[var(--border)] px-2 py-0.5 text-[var(--text)]"
-                  >
+                  <span key={t} className="inline-flex items-center gap-1 rounded bg-[var(--border)] px-2 py-1 text-sm">
                     {t}
                     <button type="button" onClick={() => removeEditTag(t)} className="text-[var(--muted)] hover:text-[var(--text)]" aria-label={`Remove ${t}`}>×</button>
                   </span>
                 ))}
-                {existingTags.filter((t) => !editTags.some((x) => x.toLowerCase() === t.toLowerCase())).slice(0, 8).map((t) => (
-                  <button key={t} type="button" onClick={() => addEditTag(t)} className="rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                    + {t}
+                <div className="flex flex-1 items-center gap-1 min-w-[120px]">
+                  <input
+                    id="edit-new-tag"
+                    type="text"
+                    placeholder="New tag"
+                    className="min-w-0 flex-1 rounded border-0 bg-transparent px-2 py-1 text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:ring-0"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addEditTag((e.target as HTMLInputElement).value);
+                        (e.target as HTMLInputElement).value = "";
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById("edit-new-tag") as HTMLInputElement | null;
+                      if (el) { addEditTag(el.value); el.value = ""; }
+                    }}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[var(--accent)] text-white hover:opacity-90"
+                    title="Add tag"
+                    aria-label="Add tag"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              {existingTags.length > 0 && (
+                <div className="mt-2">
+                  <p className="mb-1.5 text-xs text-[var(--muted)]">Existing tags — click to add:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {existingTags.filter((t) => !editTags.some((x) => x.toLowerCase() === t.toLowerCase())).map((t) => (
+                      <button key={t} type="button" onClick={() => addEditTag(t)} className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-sm text-[var(--text)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--text)]">Category (optional)</label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setCategoryOpen((o) => !o)}
+                  className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left text-[var(--text)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                >
+                  <span>{categories.find((c) => c.id === (editCategoryId ?? "cat-inbox"))?.name ?? "Inbox"}</span>
+                  <span className="text-[var(--muted)]" aria-hidden>{categoryOpen ? "▲" : "▼"}</span>
+                </button>
+                {categoryOpen && (
+                  <div className="absolute top-full left-0 right-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg">
+                    {categories.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => { setEditCategoryId(c.id); setCategoryOpen(false); }}
+                        className="block w-full px-4 py-2 text-left text-[var(--text)] hover:bg-[var(--border)]"
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="mt-1.5 text-xs text-[var(--muted)]">Available categories:</p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setEditCategoryId(c.id)}
+                    className={`rounded px-2 py-1 text-sm ${(editCategoryId ?? "cat-inbox") === c.id ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:border-[var(--accent)]"}`}
+                  >
+                    {c.name}
                   </button>
                 ))}
               </div>
-              <div className="flex gap-1">
-                <input
-                  type="text"
-                  placeholder="New tag"
-                  className="flex-1 rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-[var(--text)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addEditTag((e.target as HTMLInputElement).value);
-                      (e.target as HTMLInputElement).value = "";
-                    }
-                  }}
-                />
-              </div>
             </div>
           </div>
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mt-6 flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setEditOpen(false)}
               disabled={savingEdit}
-              className="rounded border border-[var(--border)] px-3 py-1.5 text-[var(--text)] hover:bg-[var(--border)] disabled:opacity-50"
+              className="rounded-lg border border-[var(--border)] px-4 py-2 text-[var(--text)] hover:bg-[var(--border)] disabled:opacity-50"
             >
               Cancel
             </button>
@@ -622,9 +785,9 @@ export function ItemCard({ item, showArchive, showUnarchive, showDelete = true }
               type="button"
               onClick={saveEdit}
               disabled={savingEdit}
-              className="rounded bg-[var(--accent)] px-3 py-1.5 text-white hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg bg-[var(--accent)] px-6 py-2.5 font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              {savingEdit ? "Saving…" : "Save"}
+              {savingEdit ? "Saving…" : "Save to library"}
             </button>
           </div>
         </div>
