@@ -139,24 +139,68 @@ struct LibraryItemRow: View {
                         }
                     }
 
-                    HStack(spacing: 12) {
-                        Button {
-                            showAddTag = true
-                        } label: {
-                            Label("Add tag", systemImage: "plus.circle")
-                                .font(.subheadline)
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(spacing: 24) {
+                            Button {
+                                showAddTag = true
+                            } label: {
+                                Label("Add tag", systemImage: "plus.circle")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                editTitle = item.title ?? ""
+                                editContent = item.content
+                                editHighlight = item.highlight ?? ""
+                                editCaption = item.caption ?? ""
+                                editTags = item.tags
+                                editCategoryId = item.categoryId
+                                showEdit = true
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        Button {
-                            editTitle = item.title ?? ""
-                            editContent = item.content
-                            editHighlight = item.highlight ?? ""
-                            editCaption = item.caption ?? ""
-                            editTags = item.tags
-                            editCategoryId = item.categoryId
-                            showEdit = true
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                                .font(.subheadline)
+
+                        HStack(spacing: 24) {
+                            Button {
+                                archiveItem()
+                            } label: {
+                                Label(isArchived ? "Unarchive" : "Archive", systemImage: "archivebox")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(loading)
+
+                            Button {
+                                showMove = true
+                            } label: {
+                                Label("Move", systemImage: "folder")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(loading)
+
+                            Button(role: .destructive) {
+                                showDeleteConfirm = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(loading)
                         }
                     }
 
@@ -164,32 +208,6 @@ struct LibraryItemRow: View {
                         Text(err)
                             .font(.caption)
                             .foregroundStyle(.red)
-                    }
-
-                    HStack(spacing: 16) {
-                        Button {
-                            archiveItem()
-                        } label: {
-                            Label(isArchived ? "Unarchive" : "Archive", systemImage: "archivebox")
-                                .font(.subheadline)
-                        }
-                        .disabled(loading)
-
-                        Button {
-                            showMove = true
-                        } label: {
-                            Label("Move", systemImage: "folder")
-                                .font(.subheadline)
-                        }
-                        .disabled(loading)
-
-                        Button(role: .destructive) {
-                            showDeleteConfirm = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                                .font(.subheadline)
-                        }
-                        .disabled(loading)
                     }
                 }
                 .padding(.leading, 4)
