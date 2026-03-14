@@ -10,6 +10,7 @@ struct SignInView: View {
     @State private var isSignUp = false
     @State private var forgotPasswordEmail = ""
     @State private var showForgotPassword = false
+    @State private var forgotPasswordLoading = false
     @State private var forgotPasswordLink: URL?
     @State private var showForgotSuccess = false
 
@@ -39,10 +40,6 @@ struct SignInView: View {
                         Task { await submitEmailPassword() }
                     }
                     .disabled(email.isEmpty || password.isEmpty || emailPasswordLoading)
-                    Button(isSignUp ? "Already have an account? Login" : "No account? Sign up") {
-                        isSignUp.toggle()
-                    }
-                    .foregroundStyle(.blue)
                     Button("Forgot password?") {
                         forgotPasswordEmail = email
                         showForgotPassword = true
@@ -81,10 +78,11 @@ struct SignInView: View {
                     TextField("Email", text: $forgotPasswordEmail)
                         .textContentType(.emailAddress)
                         .autocapitalization(.none)
-                    Button("Send reset link") {
+                    Button(forgotPasswordLoading ? "Sending…" : "Send reset link") {
                         Task { await requestForgotPassword() }
                     }
-                    .disabled(forgotPasswordEmail.isEmpty)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(forgotPasswordEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || forgotPasswordLoading)
                 } header: {
                     Text("Reset password")
                 } footer: {
@@ -121,14 +119,19 @@ struct SignInView: View {
     }
 
     private func requestForgotPassword() async {
+        let email = forgotPasswordEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !email.isEmpty else { return }
+        await MainActor.run { forgotPasswordLoading = true }
         do {
-            let link = try await AuthManager.shared.forgotPassword(email: forgotPasswordEmail)
+            let link = try await AuthManager.shared.forgotPassword(email: email)
             await MainActor.run {
+                forgotPasswordLoading = false
                 showForgotSuccess = true
                 UIApplication.shared.open(link)
             }
         } catch {
             await MainActor.run {
+                forgotPasswordLoading = false
                 errorMessage = error.localizedDescription
             }
         }
