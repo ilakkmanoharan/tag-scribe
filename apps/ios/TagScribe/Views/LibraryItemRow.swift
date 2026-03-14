@@ -172,33 +172,36 @@ struct LibraryItemRow: View {
                             Button {
                                 archiveItem()
                             } label: {
-                                Label(isArchived ? "Unarchive" : "Archive", systemImage: "archivebox")
+                                Image(systemName: "archivebox")
                                     .font(.subheadline)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
                             }
+                            .accessibilityLabel(isArchived ? "Unarchive" : "Archive")
                             .buttonStyle(.plain)
                             .disabled(loading)
 
                             Button {
                                 showMove = true
                             } label: {
-                                Label("Move", systemImage: "folder")
+                                Image(systemName: "folder")
                                     .font(.subheadline)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
                             }
+                            .accessibilityLabel("Move")
                             .buttonStyle(.plain)
                             .disabled(loading)
 
                             Button(role: .destructive) {
                                 showDeleteConfirm = true
                             } label: {
-                                Label("Delete", systemImage: "trash")
+                                Image(systemName: "trash")
                                     .font(.subheadline)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
                             }
+                            .accessibilityLabel("Delete")
                             .buttonStyle(.plain)
                             .disabled(loading)
                         }

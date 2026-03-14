@@ -70,7 +70,7 @@ struct AddView: View {
             } header: {
                 Text("Pictures (optional) — add multiple")
             } footer: {
-                Text("Each photo is saved as a separate item in your library.")
+                Text("All selected photos are saved as one item in your library.")
             }
 
             Section("Highlight (optional)") {
@@ -259,13 +259,18 @@ struct AddView: View {
 
         Task {
             do {
-                for item in photoItems {
-                    if let data = try await item.loadTransferable(type: Data.self),
-                       let uiImage = UIImage(data: data) {
-                        let jpegData = uiImage.jpegData(compressionQuality: 0.85) ?? data
-                        _ = try await APIClient.shared.uploadImage(
-                            imageData: jpegData,
-                            mimeType: "image/jpeg",
+                if hasImages {
+                    var imagePayloads: [(Data, mimeType: String)] = []
+                    for item in photoItems {
+                        if let data = try await item.loadTransferable(type: Data.self),
+                           let uiImage = UIImage(data: data) {
+                            let jpegData = uiImage.jpegData(compressionQuality: 0.85) ?? data
+                            imagePayloads.append((jpegData, "image/jpeg"))
+                        }
+                    }
+                    if !imagePayloads.isEmpty {
+                        _ = try await APIClient.shared.uploadImages(
+                            imageDataList: imagePayloads,
                             title: titleForTask,
                             caption: highlightForTask.isEmpty ? nil : highlightForTask,
                             tags: tagsForTask,
