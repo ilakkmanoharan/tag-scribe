@@ -18,24 +18,20 @@
 	<string>1</string>
 	<key>NSExtension</key>
 	<dict>
-		<key>NSExtensionActivationRule</key>
-		<dict>
-			<key>NSExtensionActivationSupportsAttachmentsWithMatchingTypeIdentifiers</key>
-			<array>
-				<string>public.url</string>
-				<string>public.plain-text</string>
-			</array>
-			<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
-			<integer>1</integer>
-			<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
-			<integer>1</integer>
-			<key>NSExtensionActivationSupportsText</key>
-			<true/>
-		</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>NSExtensionActivationRule</key>
+			<dict>
+				<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
+				<integer>1</integer>
+				<key>NSExtensionActivationSupportsText</key>
+				<true/>
+			</dict>
+		</dict>
 	</dict>
 </dict>
 </plist>
