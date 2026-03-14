@@ -21,6 +21,12 @@ export function Nav() {
           >
             Tag Scribe
           </Link>
+          <Link
+            href="/support"
+            className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
+          >
+            Support
+          </Link>
           {links.map(({ href, label }) => (
             <Link
               key={href}
