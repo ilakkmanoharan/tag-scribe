@@ -317,13 +317,18 @@ struct SignInView: View {
                         Task { await requestForgotPassword() }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(forgotPasswordEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || forgotPasswordLoading)
+                    .disabled(!isForgotPasswordEmailValid || forgotPasswordLoading)
                 } header: {
                     Text("Reset password")
                 } footer: {
                     if showForgotSuccess {
                         Text("If an account exists, a reset link was sent. Open the link in Safari to set a new password.")
                     }
+                }
+            }
+            .onAppear {
+                if forgotPasswordEmail.isEmpty, !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    forgotPasswordEmail = email
                 }
             }
             .navigationTitle("Forgot password")
@@ -334,6 +339,14 @@ struct SignInView: View {
                 }
             }
         }
+    }
+
+    /// True when the forgot-password email field contains a valid-looking address (so "Send reset link" can be enabled).
+    private var isForgotPasswordEmailValid: Bool {
+        let s = forgotPasswordEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty, s.contains("@"), s.contains(".") else { return false }
+        let parts = s.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: false)
+        return parts.count == 2 && !parts[0].isEmpty && parts[1].contains(".")
     }
 
     private func requestForgotPassword() async {
