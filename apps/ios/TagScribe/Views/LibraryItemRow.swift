@@ -350,28 +350,45 @@ struct LibraryItemRow: View {
                         TextField("Caption", text: $editCaption, axis: .vertical)
                             .lineLimit(2...4)
                     }
-                    if item.type == "image" {
-                        Section("Pictures") {
-                            Text("\(imageCount) photo(s) in this item.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            PhotosPicker(
-                                selection: $editPhotoItems,
-                                maxSelectionCount: 20,
-                                matching: .images
-                            ) {
-                                Label("Add photos", systemImage: "photo.on.rectangle.angled")
-                            }
-                            .disabled(appendingPhotos)
-                            if appendingPhotos {
-                                HStack {
-                                    ProgressView()
-                                    Text("Adding…")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                    Section {
+                        PhotosPicker(
+                            selection: $editPhotoItems,
+                            maxSelectionCount: 20,
+                            matching: .images
+                        ) {
+                            Label("Add photos", systemImage: "photo.on.rectangle.angled")
+                        }
+                        .disabled(appendingPhotos)
+                        if !editPhotoItems.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(Array(editPhotoItems.enumerated()), id: \.offset) { index, pickerItem in
+                                        EditPhotoThumbnail(item: pickerItem) {
+                                            Button {
+                                                editPhotoItems.remove(at: index)
+                                            } label: {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.title2)
+                                                    .foregroundStyle(.white)
+                                                    .shadow(radius: 2)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
+                        if appendingPhotos {
+                            HStack {
+                                ProgressView()
+                                Text("Adding…")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } header: {
+                        Text("Pictures (optional) — add multiple")
+                    } footer: {
+                        Text("All selected photos are saved as one item in your library.")
                     }
                     Section("Category") {
                         Picker("Category", selection: Binding(
@@ -444,11 +461,6 @@ struct LibraryItemRow: View {
                         .disabled(savingEdit)
                     }
                 }
-                .onChange(of: editPhotoItems) { _, new in
-                    if !new.isEmpty {
-                        Task { await appendPickedPhotos() }
-                    }
-                }
             }
         }
         .sheet(isPresented: $showMove) {
@@ -513,6 +525,38 @@ struct LibraryItemRow: View {
         errorMessage = nil
         Task {
             do {
+                // Selected photos: same logic as Add view — save as one item (append if image item, else new item)
+                if !editPhotoItems.isEmpty {
+                    await MainActor.run { appendingPhotos = true }
+                    var imagePayloads: [(Data, mimeType: String)] = []
+                    for pickerItem in editPhotoItems {
+                        if let data = try? await pickerItem.loadTransferable(type: Data.self),
+                           let uiImage = UIImage(data: data) {
+                            let jpeg = uiImage.jpegData(compressionQuality: 0.85) ?? data
+                            imagePayloads.append((jpeg, "image/jpeg"))
+                        }
+                    }
+                    if !imagePayloads.isEmpty {
+                        if item.type == "image" {
+                            _ = try await APIClient.shared.appendItemImages(itemId: item.id, imageDataList: imagePayloads)
+                        } else {
+                            let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let highlightVal = editHighlight.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let catId = editCategoryId ?? "cat-inbox"
+                            _ = try await APIClient.shared.uploadImages(
+                                imageDataList: imagePayloads,
+                                title: titleVal.isEmpty ? nil : titleVal,
+                                caption: highlightVal.isEmpty ? nil : highlightVal,
+                                tags: editTags,
+                                categoryId: catId
+                            )
+                        }
+                        await MainActor.run { editPhotoItems = [] }
+                    }
+                    await MainActor.run { appendingPhotos = false }
+                    await onUpdated()
+                }
+
                 let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 let linkVal = editLink.trimmingCharacters(in: .whitespacesAndNewlines)
                 let videoVal = editVideoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -547,34 +591,6 @@ struct LibraryItemRow: View {
             }
             await MainActor.run { savingEdit = false }
         }
-    }
-
-    private func appendPickedPhotos() async {
-        guard item.type == "image", !editPhotoItems.isEmpty else { return }
-        let itemsToUpload = editPhotoItems
-        await MainActor.run { appendingPhotos = true }
-        var payloads: [(Data, mimeType: String)] = []
-        for pickerItem in itemsToUpload {
-            if let data = try? await pickerItem.loadTransferable(type: Data.self),
-               let uiImage = UIImage(data: data) {
-                let jpeg = uiImage.jpegData(compressionQuality: 0.85) ?? data
-                payloads.append((jpeg, "image/jpeg"))
-            }
-        }
-        if !payloads.isEmpty {
-            do {
-                _ = try await APIClient.shared.appendItemImages(itemId: item.id, imageDataList: payloads)
-                await MainActor.run {
-                    editPhotoItems = []
-                }
-                await onUpdated()
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                }
-            }
-        }
-        await MainActor.run { appendingPhotos = false }
     }
 
     private func deleteItem() {
@@ -626,5 +642,40 @@ struct FlowLayout: Layout {
             x += size.width + spacing
         }
         return (CGSize(width: maxWidth, height: y + rowHeight), positions)
+    }
+}
+
+/// Thumbnail for selected photos in Edit sheet — matches Add view.
+private struct EditPhotoThumbnail<Overlay: View>: View {
+    let item: PhotosPickerItem
+    @ViewBuilder let trailingOverlay: () -> Overlay
+    @State private var image: UIImage?
+
+    init(item: PhotosPickerItem, @ViewBuilder trailingOverlay: @escaping () -> Overlay) {
+        self.item = item
+        self.trailingOverlay = trailingOverlay
+    }
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(alignment: .topTrailing) { trailingOverlay() }
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 80, height: 80)
+                    .overlay { ProgressView() }
+            }
+        }
+        .task {
+            if let data = try? await item.loadTransferable(type: Data.self), let ui = UIImage(data: data) {
+                image = ui
+            }
+        }
     }
 }
