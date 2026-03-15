@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 /// One library item: collapsed (title + tags) or expanded (link, highlight, tags, Add tag, Archive/Unarchive, Move, Delete).
 struct LibraryItemRow: View {
@@ -21,6 +22,8 @@ struct LibraryItemRow: View {
     @State private var errorMessage: String?
     @State private var editTitle = ""
     @State private var editContent = ""
+    @State private var editLink = ""
+    @State private var editVideoUrl = ""
     @State private var editHighlight = ""
     @State private var editCaption = ""
     @State private var editTags: [String] = []
@@ -28,6 +31,8 @@ struct LibraryItemRow: View {
     @State private var editNewTagInput = ""
     @State private var savingEdit = false
     @State private var loadedImages: [(url: URL?, data: Data?)] = []
+    @State private var editPhotoItems: [PhotosPickerItem] = []
+    @State private var appendingPhotos = false
 
     private var imageCount: Int {
         guard item.type == "image" else { return 0 }
@@ -217,11 +222,14 @@ struct LibraryItemRow: View {
 
                             Button {
                                 editTitle = item.title ?? ""
-                                editContent = item.content
+                                editContent = item.type == "text" ? item.content : ""
+                                editLink = item.type == "link" ? item.content : ""
+                                editVideoUrl = item.type == "video" ? item.content : ""
                                 editHighlight = item.highlight ?? ""
                                 editCaption = item.caption ?? ""
                                 editTags = item.tags
                                 editCategoryId = item.categoryId
+                                editPhotoItems = []
                                 showEdit = true
                             } label: {
                                 Label("Edit", systemImage: "pencil")
@@ -318,23 +326,51 @@ struct LibraryItemRow: View {
                     Section("Title") {
                         TextField("Optional title", text: $editTitle)
                     }
-                    if item.type == "link" || item.type == "video" || item.type == "text" {
-                        Section(item.type == "link" ? "Link" : item.type == "video" ? "Video URL" : "Content") {
-                            TextField("URL or content", text: $editContent)
-                                .keyboardType(item.type == "text" ? .default : .URL)
-                                .textInputAutocapitalization(.never)
+                    Section("Link (optional)") {
+                        TextField("Paste or drop a link (e.g. https://...)", text: $editLink)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                    }
+                    Section("Video URL (optional)") {
+                        TextField("e.g. https://...mp4", text: $editVideoUrl)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                    }
+                    if item.type == "text" {
+                        Section("Content") {
+                            TextField("Content", text: $editContent, axis: .vertical)
+                                .lineLimit(3...8)
                         }
                     }
-                    if item.type == "link" {
-                        Section("Highlight") {
-                            TextField("Highlighted text", text: $editHighlight, axis: .vertical)
-                                .lineLimit(3...6)
-                        }
+                    Section("Highlight (optional)") {
+                        TextField("Highlighted text", text: $editHighlight, axis: .vertical)
+                            .lineLimit(3...6)
                     }
-                    if item.type == "image" || item.type == "video" || item.type == "text" {
-                        Section("Caption") {
-                            TextField("Caption", text: $editCaption, axis: .vertical)
-                                .lineLimit(2...4)
+                    Section("Caption (optional)") {
+                        TextField("Caption", text: $editCaption, axis: .vertical)
+                            .lineLimit(2...4)
+                    }
+                    if item.type == "image" {
+                        Section("Pictures") {
+                            Text("\(imageCount) photo(s) in this item.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            PhotosPicker(
+                                selection: $editPhotoItems,
+                                maxSelectionCount: 20,
+                                matching: .images
+                            ) {
+                                Label("Add photos", systemImage: "photo.on.rectangle.angled")
+                            }
+                            .disabled(appendingPhotos)
+                            if appendingPhotos {
+                                HStack {
+                                    ProgressView()
+                                    Text("Adding…")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                     Section("Category") {
@@ -408,6 +444,11 @@ struct LibraryItemRow: View {
                         .disabled(savingEdit)
                     }
                 }
+                .onChange(of: editPhotoItems) { _, new in
+                    if !new.isEmpty {
+                        Task { await appendPickedPhotos() }
+                    }
+                }
             }
         }
         .sheet(isPresented: $showMove) {
@@ -473,17 +514,27 @@ struct LibraryItemRow: View {
         Task {
             do {
                 let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                let contentVal = (item.type == "link" || item.type == "video" || item.type == "text") ? editContent.trimmingCharacters(in: .whitespacesAndNewlines) : nil
-                let highlightVal = item.type == "link" ? editHighlight.trimmingCharacters(in: .whitespacesAndNewlines) : nil
-                let captionVal = (item.type == "image" || item.type == "video" || item.type == "text") ? editCaption.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+                let linkVal = editLink.trimmingCharacters(in: .whitespacesAndNewlines)
+                let videoVal = editVideoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+                let contentVal: String? = {
+                    if item.type == "link" || item.type == "video" || item.type == "text" {
+                        if !linkVal.isEmpty { return linkVal }
+                        if !videoVal.isEmpty { return videoVal }
+                        if item.type == "text" { return editContent.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        return item.content
+                    }
+                    return nil
+                }()
+                let highlightVal = editHighlight.trimmingCharacters(in: .whitespacesAndNewlines)
+                let captionVal = editCaption.trimmingCharacters(in: .whitespacesAndNewlines)
                 _ = try await APIClient.shared.updateItem(
                     id: item.id,
                     categoryId: editCategoryId,
                     tags: editTags,
                     title: titleVal.isEmpty ? nil : titleVal,
                     content: contentVal,
-                    highlight: highlightVal?.isEmpty == true ? nil : highlightVal,
-                    caption: captionVal?.isEmpty == true ? nil : captionVal
+                    highlight: highlightVal.isEmpty ? nil : highlightVal,
+                    caption: captionVal.isEmpty ? nil : captionVal
                 )
                 await MainActor.run {
                     showEdit = false
@@ -496,6 +547,34 @@ struct LibraryItemRow: View {
             }
             await MainActor.run { savingEdit = false }
         }
+    }
+
+    private func appendPickedPhotos() async {
+        guard item.type == "image", !editPhotoItems.isEmpty else { return }
+        let itemsToUpload = editPhotoItems
+        await MainActor.run { appendingPhotos = true }
+        var payloads: [(Data, mimeType: String)] = []
+        for pickerItem in itemsToUpload {
+            if let data = try? await pickerItem.loadTransferable(type: Data.self),
+               let uiImage = UIImage(data: data) {
+                let jpeg = uiImage.jpegData(compressionQuality: 0.85) ?? data
+                payloads.append((jpeg, "image/jpeg"))
+            }
+        }
+        if !payloads.isEmpty {
+            do {
+                _ = try await APIClient.shared.appendItemImages(itemId: item.id, imageDataList: payloads)
+                await MainActor.run {
+                    editPhotoItems = []
+                }
+                await onUpdated()
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+        await MainActor.run { appendingPhotos = false }
     }
 
     private func deleteItem() {

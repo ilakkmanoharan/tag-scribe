@@ -350,6 +350,27 @@ export async function deleteAppleSubMapping(appleSub: string): Promise<void> {
   await db.collection(APPLE_UID_COLLECTION).doc(appleSub).delete();
 }
 
+/** Update all Apple sub docs that point to secondaryUid to point to primaryUid (after merge). */
+export async function updateAppleSubMappingsToPrimary(
+  secondaryUid: string,
+  primaryUid: string
+): Promise<void> {
+  const db = getAdminFirestore();
+  if (!db) return;
+  const col = db.collection(APPLE_UID_COLLECTION);
+  const snap = await col.get();
+  const batch = db.batch();
+  let count = 0;
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    if ((data?.firebaseUid as string) === secondaryUid) {
+      batch.update(doc.ref, { firebaseUid: primaryUid });
+      count++;
+    }
+  }
+  if (count > 0) await batch.commit();
+}
+
 const MERGED = "merged";
 const MERGED_INTO_UID = "mergedIntoUid";
 const MERGED_AT = "mergedAt";

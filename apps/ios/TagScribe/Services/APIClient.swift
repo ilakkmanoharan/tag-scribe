@@ -190,6 +190,39 @@ final class APIClient {
         return try decoder.decode(Item.self, from: data)
     }
 
+    /// Append images to an existing image item. API: POST /api/items/:id/image (multipart "image" files).
+    func appendItemImages(itemId: String, imageDataList: [(Data, mimeType: String)]) async throws -> Item {
+        guard !imageDataList.isEmpty else { throw APIError.server(400) }
+        let url = URL(string: baseURL + "/api/items/\(itemId)/image")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+
+        var body = Data()
+        for (index, item) in imageDataList.enumerated() {
+            let (imageData, mimeType) = item
+            let ext = mimeType == "image/png" ? "png" : mimeType == "image/gif" ? "gif" : mimeType == "image/webp" ? "webp" : "jpg"
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.\(index).\(ext)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(Item.self, from: data)
+    }
+
     /// Update item: archive, category, tags, title, content, highlight, caption. API: PATCH /api/items/:id
     func updateItem(
         id: String,
