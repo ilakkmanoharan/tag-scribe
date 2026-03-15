@@ -23,6 +23,7 @@ export async function PATCH(
       content,
       highlight,
       caption,
+      imageUrls,
     } = body as {
       archived?: boolean;
       categoryId?: string;
@@ -31,6 +32,7 @@ export async function PATCH(
       content?: string;
       highlight?: string;
       caption?: string;
+      imageUrls?: string[];
     };
     const updateFields: firestore.ItemUpdateFields = {};
     if (typeof archived === "boolean") updateFields.archived = archived;
@@ -40,10 +42,11 @@ export async function PATCH(
     if (content !== undefined) updateFields.content = typeof content === "string" ? content : "";
     if (highlight !== undefined) updateFields.highlight = typeof highlight === "string" ? highlight : undefined;
     if (caption !== undefined) updateFields.caption = typeof caption === "string" ? caption : undefined;
+    if (Array.isArray(imageUrls)) updateFields.imageUrls = imageUrls;
 
     if (Object.keys(updateFields).length === 0) {
       return NextResponse.json(
-        { error: "Provide at least one of: archived, categoryId, tags, title, content, highlight, caption" },
+        { error: "Provide at least one of: archived, categoryId, tags, title, content, highlight, caption, imageUrls" },
         { status: 400 }
       );
     }

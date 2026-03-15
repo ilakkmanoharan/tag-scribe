@@ -223,7 +223,7 @@ final class APIClient {
         return try decoder.decode(Item.self, from: data)
     }
 
-    /// Update item: archive, category, tags, title, content, highlight, caption. API: PATCH /api/items/:id
+    /// Update item: archive, category, tags, title, content, highlight, caption, imageUrls. API: PATCH /api/items/:id
     func updateItem(
         id: String,
         archived: Bool? = nil,
@@ -232,7 +232,8 @@ final class APIClient {
         title: String? = nil,
         content: String? = nil,
         highlight: String? = nil,
-        caption: String? = nil
+        caption: String? = nil,
+        imageUrls: [String]? = nil
     ) async throws -> Item {
         let url = URL(string: baseURL + "/api/items/\(id)")!
         var request = URLRequest(url: url)
@@ -247,6 +248,7 @@ final class APIClient {
         if let v = content { body["content"] = v }
         if let v = highlight { body["highlight"] = v }
         if let v = caption { body["caption"] = v }
+        if let urls = imageUrls { body["imageUrls"] = urls }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, http.statusCode == 401 {

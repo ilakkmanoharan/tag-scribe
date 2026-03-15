@@ -33,6 +33,12 @@ struct LibraryItemRow: View {
     @State private var loadedImages: [(url: URL?, data: Data?)] = []
     @State private var editPhotoItems: [PhotosPickerItem] = []
     @State private var appendingPhotos = false
+    @State private var editExistingImageData: [(url: URL?, data: Data?)] = []
+    @State private var editImageUrls: [String] = []
+    @State private var editCategories: [Category] = []
+    @State private var editNewCategoryName = ""
+    @State private var addingCategory = false
+    @State private var removingImageAt: Int? = nil
 
     private var imageCount: Int {
         guard item.type == "image" else { return 0 }
@@ -230,6 +236,14 @@ struct LibraryItemRow: View {
                                 editTags = item.tags
                                 editCategoryId = item.categoryId
                                 editPhotoItems = []
+                                editCategories = categories
+                                editNewCategoryName = ""
+                                if item.type == "image" {
+                                    editImageUrls = item.imageUrls ?? (item.content.isEmpty ? [] : [item.content])
+                                } else {
+                                    editImageUrls = []
+                                }
+                                editExistingImageData = []
                                 showEdit = true
                             } label: {
                                 Label("Edit", systemImage: "pencil")
@@ -351,6 +365,28 @@ struct LibraryItemRow: View {
                             .lineLimit(2...4)
                     }
                     Section {
+                        if item.type == "image" && !editExistingImageData.isEmpty {
+                            Text("Existing photos")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(Array(editExistingImageData.enumerated()), id: \.offset) { index, pair in
+                                        EditExistingPhotoThumbnail(url: pair.url, data: pair.data) {
+                                            Button {
+                                                removeExistingPhoto(at: index)
+                                            } label: {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.title2)
+                                                    .foregroundStyle(.white)
+                                                    .shadow(radius: 2)
+                                            }
+                                        }
+                                        .disabled(removingImageAt != nil)
+                                    }
+                                }
+                            }
+                        }
                         PhotosPicker(
                             selection: $editPhotoItems,
                             maxSelectionCount: 20,
@@ -377,10 +413,10 @@ struct LibraryItemRow: View {
                                 }
                             }
                         }
-                        if appendingPhotos {
+                        if appendingPhotos || removingImageAt != nil {
                             HStack {
                                 ProgressView()
-                                Text("Adding…")
+                                Text(removingImageAt != nil ? "Removing…" : "Adding…")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -390,17 +426,24 @@ struct LibraryItemRow: View {
                     } footer: {
                         Text("All selected photos are saved as one item in your library.")
                     }
-                    Section("Category") {
+                    Section("Category (optional)") {
                         Picker("Category", selection: Binding(
                             get: { editCategoryId ?? "" },
                             set: { editCategoryId = $0.isEmpty ? nil : $0 }
                         )) {
                             Text("None").tag("")
-                            ForEach(categories) { cat in
+                            ForEach(editCategories) { cat in
                                 Text(cat.name).tag(cat.id)
                             }
                         }
                         .pickerStyle(.menu)
+                        HStack {
+                            TextField("New category name", text: $editNewCategoryName)
+                            Button("Add category") {
+                                addNewCategoryInEdit()
+                            }
+                            .disabled(editNewCategoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || addingCategory)
+                        }
                     }
                     Section("Tags") {
                         ForEach(editTags, id: \.self) { tag in
@@ -447,6 +490,11 @@ struct LibraryItemRow: View {
                 }
                 .navigationTitle("Edit item")
                 .navigationBarTitleDisplayMode(.inline)
+                .task(id: "\(showEdit)-\(item.id)-\(editImageUrls.count)") {
+                    if showEdit, item.type == "image", !editImageUrls.isEmpty {
+                        await loadEditExistingImages()
+                    }
+                }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") {
@@ -518,6 +566,57 @@ struct LibraryItemRow: View {
 
     private func moveToCategory(_ categoryId: String) {
         performUpdate(categoryId: categoryId)
+    }
+
+    private func loadEditExistingImages() async {
+        guard item.type == "image", !editImageUrls.isEmpty else { return }
+        var results: [(url: URL?, data: Data?)] = []
+        for index in 0..<editImageUrls.count {
+            let pair = try? await APIClient.shared.getItemImage(itemId: item.id, index: index)
+            results.append((url: pair?.url, data: pair?.data))
+        }
+        await MainActor.run { editExistingImageData = results }
+    }
+
+    private func removeExistingPhoto(at index: Int) {
+        guard index >= 0, index < editImageUrls.count else { return }
+        removingImageAt = index
+        var newUrls = editImageUrls
+        newUrls.remove(at: index)
+        editImageUrls = newUrls
+        editExistingImageData.remove(at: index)
+        Task {
+            do {
+                _ = try await APIClient.shared.updateItem(
+                    id: item.id,
+                    content: newUrls.isEmpty ? "" : newUrls[0],
+                    imageUrls: newUrls
+                )
+                await onUpdated()
+            } catch {
+                await MainActor.run { errorMessage = error.localizedDescription }
+            }
+            await MainActor.run { removingImageAt = nil }
+        }
+    }
+
+    private func addNewCategoryInEdit() {
+        let name = editNewCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        addingCategory = true
+        Task {
+            do {
+                let cat = try await APIClient.shared.createCategory(name: name)
+                await MainActor.run {
+                    editCategories.append(cat)
+                    editCategoryId = cat.id
+                    editNewCategoryName = ""
+                }
+            } catch {
+                await MainActor.run { errorMessage = error.localizedDescription }
+            }
+            await MainActor.run { addingCategory = false }
+        }
     }
 
     private func saveEdit() {
@@ -629,6 +728,56 @@ struct FlowLayout: Layout {
             x += size.width + spacing
         }
         return (CGSize(width: maxWidth, height: y + rowHeight), positions)
+    }
+}
+
+/// Thumbnail for existing item images in Edit sheet (from URL or Data).
+private struct EditExistingPhotoThumbnail<Overlay: View>: View {
+    let url: URL?
+    let data: Data?
+    @ViewBuilder let trailingOverlay: () -> Overlay
+
+    var body: some View {
+        Group {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 80, height: 80)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(alignment: .topTrailing) { trailingOverlay() }
+                    case .failure:
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 80, height: 80)
+                            .overlay(alignment: .topTrailing) { trailingOverlay() }
+                    case .empty:
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 80, height: 80)
+                            .overlay { ProgressView() }
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            } else if let data, let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(alignment: .topTrailing) { trailingOverlay() }
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 80, height: 80)
+                    .overlay { ProgressView() }
+                    .overlay(alignment: .topTrailing) { trailingOverlay() }
+            }
+        }
     }
 }
 
