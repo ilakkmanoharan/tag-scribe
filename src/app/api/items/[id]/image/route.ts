@@ -95,7 +95,7 @@ export async function GET(
   }
 }
 
-/** Append images to an image item. Accepts multipart/form-data with multiple "image" files. */
+/** Append images to an image item, or set images on a non-image item (converts to image). Multipart "image" files. */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -119,30 +119,69 @@ export async function POST(
 
     if (result.uid) {
       const item = await firestore.getItemById(result.uid, id);
-      if (!item || item.type !== "image") {
-        return NextResponse.json({ error: "Item not found or not an image" }, { status: 404 });
+      if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
+
+      if (item.type === "image") {
+        const existingUrls = item.imageUrls?.length ? item.imageUrls : [item.content];
+        const newPaths: string[] = [];
+        for (let i = 0; i < validFiles.length; i++) {
+          const file = validFiles[i];
+          const mime = file.type.toLowerCase();
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const storagePath = await uploadItemImage(result.uid, id, buffer, mime, existingUrls.length + i);
+          newPaths.push(storagePath);
+        }
+        const imageUrls = [...existingUrls, ...newPaths];
+        const updated = await firestore.updateItem(result.uid, id, { content: imageUrls[0], imageUrls });
+        if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+        return NextResponse.json(updated);
       }
-      const existingUrls = item.imageUrls?.length ? item.imageUrls : [item.content];
+
+      // Non-image item: upload images and convert this item to image (same entry, no new item)
       const newPaths: string[] = [];
       for (let i = 0; i < validFiles.length; i++) {
         const file = validFiles[i];
         const mime = file.type.toLowerCase();
         const buffer = Buffer.from(await file.arrayBuffer());
-        const storagePath = await uploadItemImage(result.uid, id, buffer, mime, existingUrls.length + i);
+        const storagePath = await uploadItemImage(result.uid, id, buffer, mime, i);
         newPaths.push(storagePath);
       }
-      const imageUrls = [...existingUrls, ...newPaths];
-      const updated = await firestore.updateItem(result.uid, id, { content: imageUrls[0], imageUrls });
+      const updated = await firestore.updateItem(result.uid, id, {
+        type: "image",
+        content: newPaths[0],
+        imageUrls: newPaths,
+      });
       if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
       return NextResponse.json(updated);
     }
 
     const { getItemById, updateItem } = await import("@/lib/db");
     const item = getItemById(id);
-    if (!item || item.type !== "image") {
-      return NextResponse.json({ error: "Item not found or not an image" }, { status: 404 });
+    if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
+
+    if (item.type === "image") {
+      const existingUrls = item.imageUrls?.length ? item.imageUrls : [item.content];
+      const newPaths: string[] = [];
+      const dir = path.join(process.cwd(), "private", "uploads", "items");
+      await mkdir(dir, { recursive: true });
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
+        const mime = file.type.toLowerCase();
+        const ext = MIME_EXT[mime] || "png";
+        const idx = existingUrls.length + i;
+        const filePath = path.join(dir, `${id}_${idx}.${ext}`);
+        await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
+        const st = await stat(filePath);
+        if (!st.size) return NextResponse.json({ error: "Image could not be saved" }, { status: 500 });
+        newPaths.push(`uploads/items/${id}_${idx}.${ext}`);
+      }
+      const imageUrls = [...existingUrls, ...newPaths];
+      const updated = updateItem(id, { content: imageUrls[0], imageUrls });
+      if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+      return NextResponse.json(updated);
     }
-    const existingUrls = item.imageUrls?.length ? item.imageUrls : [item.content];
+
+    // Non-image item: convert to image (same entry)
     const newPaths: string[] = [];
     const dir = path.join(process.cwd(), "private", "uploads", "items");
     await mkdir(dir, { recursive: true });
@@ -150,15 +189,13 @@ export async function POST(
       const file = validFiles[i];
       const mime = file.type.toLowerCase();
       const ext = MIME_EXT[mime] || "png";
-      const idx = existingUrls.length + i;
-      const filePath = path.join(dir, `${id}_${idx}.${ext}`);
+      const filePath = path.join(dir, `${id}_${i}.${ext}`);
       await writeFile(filePath, Buffer.from(await file.arrayBuffer()));
       const st = await stat(filePath);
       if (!st.size) return NextResponse.json({ error: "Image could not be saved" }, { status: 500 });
-      newPaths.push(`uploads/items/${id}_${idx}.${ext}`);
+      newPaths.push(`uploads/items/${id}_${i}.${ext}`);
     }
-    const imageUrls = [...existingUrls, ...newPaths];
-    const updated = updateItem(id, { content: imageUrls[0], imageUrls });
+    const updated = updateItem(id, { type: "image", content: newPaths[0], imageUrls: newPaths });
     if (!updated) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
     return NextResponse.json(updated);
   } catch (e) {

@@ -228,7 +228,9 @@ export async function updateItemTags(uid: string, id: string, tags: string[]): P
   return { ...existing, tags: normalized, updatedAt };
 }
 
-export type ItemUpdateFields = Partial<Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags" | "imageUrls">> & { archived?: boolean };
+export type ItemUpdateFields = Partial<
+  Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags" | "imageUrls" | "type">
+> & { archived?: boolean };
 
 export async function updateItem(uid: string, id: string, fields: ItemUpdateFields): Promise<Item | undefined> {
   const existing = await getItemById(uid, id);
@@ -243,6 +245,7 @@ export async function updateItem(uid: string, id: string, fields: ItemUpdateFiel
   if (fields.caption !== undefined) updates.caption = fields.caption ?? null;
   if (fields.categoryId !== undefined) updates.categoryId = fields.categoryId ?? null;
   if (Array.isArray(fields.imageUrls)) updates.imageUrls = fields.imageUrls;
+  if (fields.type !== undefined) updates.type = fields.type;
   if (Array.isArray(fields.tags)) {
     updates.tags = fields.tags.map((t) => t.trim()).filter(Boolean);
   }
@@ -258,6 +261,7 @@ export async function updateItem(uid: string, id: string, fields: ItemUpdateFiel
     ...(fields.caption !== undefined && { caption: fields.caption ?? undefined }),
     ...(fields.categoryId !== undefined && { categoryId: fields.categoryId }),
     ...(Array.isArray(fields.imageUrls) && { imageUrls: fields.imageUrls }),
+    ...(fields.type !== undefined && { type: fields.type }),
     ...(Array.isArray(fields.tags) && { tags: fields.tags.map((t) => t.trim()).filter(Boolean) }),
     ...(typeof fields.archived === "boolean" && { archivedAt: fields.archived ? updatedAt : undefined }),
     updatedAt,

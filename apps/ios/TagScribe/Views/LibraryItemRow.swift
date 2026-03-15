@@ -525,7 +525,7 @@ struct LibraryItemRow: View {
         errorMessage = nil
         Task {
             do {
-                // Selected photos: same logic as Add view — save as one item (append if image item, else new item)
+                // Selected photos: always update this same item (append if already image, else convert to image)
                 if !editPhotoItems.isEmpty {
                     await MainActor.run { appendingPhotos = true }
                     var imagePayloads: [(Data, mimeType: String)] = []
@@ -537,24 +537,11 @@ struct LibraryItemRow: View {
                         }
                     }
                     if !imagePayloads.isEmpty {
-                        if item.type == "image" {
-                            _ = try await APIClient.shared.appendItemImages(itemId: item.id, imageDataList: imagePayloads)
-                        } else {
-                            let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                            let highlightVal = editHighlight.trimmingCharacters(in: .whitespacesAndNewlines)
-                            let catId = editCategoryId ?? "cat-inbox"
-                            _ = try await APIClient.shared.uploadImages(
-                                imageDataList: imagePayloads,
-                                title: titleVal.isEmpty ? nil : titleVal,
-                                caption: highlightVal.isEmpty ? nil : highlightVal,
-                                tags: editTags,
-                                categoryId: catId
-                            )
-                        }
+                        _ = try await APIClient.shared.appendItemImages(itemId: item.id, imageDataList: imagePayloads)
                         await MainActor.run { editPhotoItems = [] }
+                        await onUpdated()
                     }
                     await MainActor.run { appendingPhotos = false }
-                    await onUpdated()
                 }
 
                 let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
