@@ -8,6 +8,8 @@ final class AuthManager: NSObject, ObservableObject {
 
     @Published private(set) var isSignedIn: Bool = false
     @Published private(set) var currentEmail: String?
+    /// Set briefly after Apple sign-in so UI can show "Welcome back — signed in with Apple."
+    @Published var lastSignInWithApple: Bool = false
 
     private let apiBaseURL = "https://tag-scribe.vercel.app"
     private static let privateRelaySuffix = "@privaterelay.appleid.com"
@@ -87,9 +89,6 @@ final class AuthManager: NSObject, ObservableObject {
         if http.statusCode == 401 {
             throw AuthError.invalidAppleToken
         }
-        if http.statusCode == 409 {
-            throw AuthError.userAlreadyExists
-        }
         if http.statusCode != 200 {
             throw AuthError.serverError(http.statusCode)
         }
@@ -99,13 +98,17 @@ final class AuthManager: NSObject, ObservableObject {
         guard JWTKeychain.save(decoded.token) else {
             throw AuthError.couldNotSaveToken
         }
-        await MainActor.run { updateStateFromKeychain() }
+        await MainActor.run {
+            updateStateFromKeychain()
+            lastSignInWithApple = true
+        }
     }
 
     func signOut() {
         JWTKeychain.delete()
         isSignedIn = false
         currentEmail = nil
+        lastSignInWithApple = false
     }
 
     /// Login with email + password via API. Saves returned JWT.
