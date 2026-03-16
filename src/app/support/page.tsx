@@ -11,23 +11,36 @@ export const dynamic = "force-static";
 export default function SupportPage() {
   return (
     <article className="prose prose-slate dark:prose-invert max-w-none">
-      <h1>Support</h1>
+      <h1>TagScribe Support</h1>
       <p>
-        Get help with Tag Scribe. This page is public — no sign-in required.
+        TagScribe lets you save and organize links, highlights, notes, and references using tags and categories.
       </p>
 
-      <h2>FAQs</h2>
+      <h2>Help</h2>
+
+      <h3>Saving content</h3>
+      <p>Use the Share Extension from Safari or other apps to save links to TagScribe.</p>
+
+      <h3>Edit or delete items</h3>
+      <p>Open the saved item → tap <strong>Edit</strong> to update tags or notes → tap <strong>Delete</strong> to remove it.</p>
+
+      <h3>Login issues</h3>
+      <p>Sign in using the method you registered with (Email or Sign in with Apple). If both use the same email, either method should work.</p>
+
+      <h3>Privacy</h3>
+      <p>Your saved content is private and visible only to your account.</p>
+
+      <h2>Contact Support</h2>
+      <p>
+        Email: <a href="mailto:ilakkmanoharan@gmail.com">ilakkmanoharan@gmail.com</a>
+      </p>
+      <p>When reporting an issue, please include:</p>
       <ul>
-        <li><strong>How do I save a link?</strong> Use the Share extension on iOS (Share → Tag Scribe) or add links in the app under Add. On the web, use the Add page.</li>
-        <li><strong>I forgot my password.</strong> On the app, tap &quot;Forgot password?&quot; on the sign-in screen and enter your email to receive a reset link.</li>
-        <li><strong>How do I delete my account?</strong> Sign in on the web or in the app, go to Settings, and use the account deletion option.</li>
+        <li>Device model</li>
+        <li>iOS version</li>
+        <li>Steps to reproduce the issue</li>
       </ul>
-
-      <h2>Contact</h2>
-      <p>
-        For other questions or issues, email us at{" "}
-        <a href="mailto:support@tagnscribe.com">support@tagnscribe.com</a>.
-      </p>
+      <p>Response time is typically <strong>24–48 hours</strong>.</p>
 
       <p className="text-[var(--muted)]">
         <Link href="/">Tag Scribe</Link>

@@ -167,7 +167,7 @@ struct LibraryItemRow: View {
                         }
                     }
 
-                    if let url = contentURL, item.type != "image" {
+                    if let url = contentURL {
                         Link(destination: url) {
                             HStack(spacing: 6) {
                                 Image(systemName: "link")
@@ -229,8 +229,9 @@ struct LibraryItemRow: View {
                             Button {
                                 editTitle = item.title ?? ""
                                 editContent = item.type == "text" ? item.content : ""
-                                editLink = item.type == "link" ? item.content : ""
-                                editVideoUrl = item.type == "video" ? item.content : ""
+                                let contentIsUrl = item.content.hasPrefix("http://") || item.content.hasPrefix("https://")
+                                editLink = item.type == "link" ? item.content : (item.type == "image" && contentIsUrl && !item.content.lowercased().contains("mp4") ? item.content : "")
+                                editVideoUrl = item.type == "video" ? item.content : (item.type == "image" && contentIsUrl && item.content.lowercased().contains("mp4") ? item.content : "")
                                 editHighlight = item.highlight ?? ""
                                 editCaption = item.caption ?? ""
                                 editTags = item.tags
@@ -647,12 +648,10 @@ struct LibraryItemRow: View {
                 let linkVal = editLink.trimmingCharacters(in: .whitespacesAndNewlines)
                 let videoVal = editVideoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
                 let contentVal: String? = {
-                    if item.type == "link" || item.type == "video" || item.type == "text" {
-                        if !linkVal.isEmpty { return linkVal }
-                        if !videoVal.isEmpty { return videoVal }
-                        if item.type == "text" { return editContent.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        return item.content
-                    }
+                    if !linkVal.isEmpty { return linkVal }
+                    if !videoVal.isEmpty { return videoVal }
+                    if item.type == "text" { return editContent.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    if item.type == "link" || item.type == "video" { return item.content }
                     return nil
                 }()
                 let highlightVal = editHighlight.trimmingCharacters(in: .whitespacesAndNewlines)
