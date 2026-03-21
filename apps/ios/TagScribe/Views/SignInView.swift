@@ -1,5 +1,6 @@
 import SwiftUI
 import AuthenticationServices
+import os.log
 
 enum AuthTab: String, CaseIterable {
     case signIn = "Sign In"
@@ -17,7 +18,10 @@ struct SignInView: View {
     @State private var showForgotPassword = false
     @State private var forgotPasswordLoading = false
     @State private var showForgotSuccess = false
+    @State private var forgotPasswordError: String?
     @StateObject private var appleSignInRunner = AppleSignInRunner()
+
+    private static let authUILog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "TagScribe", category: "SignInUI")
 
     // Inline validation (Sign In)
     @State private var emailError: String?
@@ -70,6 +74,9 @@ struct SignInView: View {
             .navigationTitle("Sign in")
             .sheet(isPresented: $showForgotPassword) {
                 forgotPasswordSheet
+            }
+            .onChange(of: showForgotPassword) { _, open in
+                if open { forgotPasswordError = nil }
             }
             .onOpenURL { url in
                 if showForgotSuccess { showForgotSuccess = false }
@@ -140,11 +147,21 @@ struct SignInView: View {
                 if let msg = confirmPasswordError {
                     Text(msg).font(.caption).foregroundStyle(.red)
                 }
-                Button(emailPasswordLoading ? "Creating…" : "Create Account") {
+                Button {
+                    Self.authUILog.info("UI: Create Account tapped")
                     Task { await submitSignUp() }
+                } label: {
+                    ZStack {
+                        Text(emailPasswordLoading ? "Creating…" : "Create Account")
+                            .opacity(emailPasswordLoading ? 0 : 1)
+                        if emailPasswordLoading {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
                 .disabled(!signUpFormValid || emailPasswordLoading)
                 .buttonStyle(.borderedProminent)
                 Button("Already have an account? Log In") {
@@ -176,11 +193,21 @@ struct SignInView: View {
             Section {
                 emailField
                 passwordField(isNew: false)
-                Button(emailPasswordLoading ? "Signing in…" : "Log In") {
+                Button {
+                    Self.authUILog.info("UI: Log In tapped")
                     Task { await submitLogin() }
+                } label: {
+                    ZStack {
+                        Text(emailPasswordLoading ? "Signing in…" : "Log In")
+                            .opacity(emailPasswordLoading ? 0 : 1)
+                        if emailPasswordLoading {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
                 .disabled(!loginFormValid || emailPasswordLoading)
                 .buttonStyle(.borderedProminent)
                 Button("Forgot password?") {
@@ -202,13 +229,21 @@ struct SignInView: View {
 
     private func appleButton(label: String) -> some View {
         Button {
+            Self.authUILog.info("UI: Apple sign-in tapped label=\(label, privacy: .public)")
             appleSignInRunner.start()
         } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "apple.logo")
-                    .font(.title2)
-                Text(appleSignInRunner.loading ? "Signing in…" : label)
-                    .font(.headline)
+            ZStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "apple.logo")
+                        .font(.title2)
+                    Text(appleSignInRunner.loading ? "Signing in…" : label)
+                        .font(.headline)
+                }
+                .opacity(appleSignInRunner.loading ? 0 : 1)
+                if appleSignInRunner.loading {
+                    ProgressView()
+                        .tint(.white)
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
@@ -287,40 +322,71 @@ struct SignInView: View {
 
     private func submitSignUp() async {
         guard validateSignUp() else { return }
-        errorMessage = nil
-        emailPasswordLoading = true
-        defer { emailPasswordLoading = false }
+        await MainActor.run {
+            errorMessage = nil
+            emailPasswordLoading = true
+        }
         do {
             try await AuthManager.shared.signUp(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
+            await MainActor.run { emailPasswordLoading = false }
+            Self.authUILog.info("UI: sign up completed successfully")
         } catch {
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             await MainActor.run {
-                errorMessage = error.localizedDescription
+                emailPasswordLoading = false
+                errorMessage = message.isEmpty ? "Something went wrong. Please try again." : message
             }
+            Self.authUILog.error("UI: sign up failed \(message, privacy: .public)")
         }
     }
 
     private func submitLogin() async {
-        errorMessage = nil
-        emailPasswordLoading = true
-        defer { emailPasswordLoading = false }
+        await MainActor.run {
+            errorMessage = nil
+            emailPasswordLoading = true
+        }
         do {
             try await AuthManager.shared.login(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
+            await MainActor.run { emailPasswordLoading = false }
+            Self.authUILog.info("UI: login completed successfully")
         } catch {
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             await MainActor.run {
-                errorMessage = error.localizedDescription
+                emailPasswordLoading = false
+                errorMessage = message.isEmpty ? "Something went wrong. Please try again." : message
             }
+            Self.authUILog.error("UI: login failed \(message, privacy: .public)")
         }
     }
 
     private var forgotPasswordSheet: some View {
         NavigationStack {
             Form {
+                if let fpErr = forgotPasswordError {
+                    Section {
+                        Text(fpErr)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .listRowBackground(Color.red.opacity(0.1))
+                }
                 Section {
                     TextField("Email", text: $forgotPasswordEmail)
                         .textContentType(.emailAddress)
                         .autocapitalization(.none)
-                    Button(forgotPasswordLoading ? "Sending…" : "Send reset link") {
+                    Button {
+                        Self.authUILog.info("UI: forgot password send tapped")
                         Task { await requestForgotPassword() }
+                    } label: {
+                        ZStack {
+                            Text(forgotPasswordLoading ? "Sending…" : "Send reset link")
+                                .opacity(forgotPasswordLoading ? 0 : 1)
+                            if forgotPasswordLoading {
+                                ProgressView()
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!isForgotPasswordEmailValid || forgotPasswordLoading)
@@ -358,71 +424,106 @@ struct SignInView: View {
     private func requestForgotPassword() async {
         let emailToUse = forgotPasswordEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !emailToUse.isEmpty else { return }
-        await MainActor.run { forgotPasswordLoading = true }
+        await MainActor.run {
+            forgotPasswordLoading = true
+            forgotPasswordError = nil
+        }
         do {
             let link = try await AuthManager.shared.forgotPassword(email: emailToUse)
             await MainActor.run {
                 forgotPasswordLoading = false
                 showForgotSuccess = true
+                forgotPasswordError = nil
                 UIApplication.shared.open(link)
             }
+            Self.authUILog.info("UI: forgot password success")
         } catch {
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             await MainActor.run {
                 forgotPasswordLoading = false
-                errorMessage = error.localizedDescription
+                forgotPasswordError = message.isEmpty ? "Unable to connect. Please check your internet." : message
             }
+            Self.authUILog.error("UI: forgot password failed \(message, privacy: .public)")
         }
     }
 }
 
 // MARK: - Apple Sign In Runner
 private final class AppleSignInRunner: NSObject, ObservableObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "TagScribe", category: "AppleSignIn")
+
     @Published var errorMessage: String?
     @Published var loading = false
 
     func start() {
-        errorMessage = nil
-        loading = true
-        let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.email]
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        controller.delegate = self
-        controller.presentationContextProvider = self
-        controller.performRequests()
+        Task { @MainActor in
+            Self.log.info("AUTH apple UI: performRequests starting")
+            errorMessage = nil
+            loading = true
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.email]
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
+        }
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         Task {
             do {
                 try await AuthManager.shared.signInWithApple(authorization: authorization)
-                await MainActor.run { loading = false }
-            } catch {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
                     loading = false
+                    Self.log.info("AUTH apple UI: completed with authorization success")
+                }
+            } catch {
+                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                await MainActor.run {
+                    errorMessage = message.isEmpty ? "Unable to connect. Please check your internet." : message
+                    loading = false
+                    Self.log.error("AUTH apple UI: API error \(message, privacy: .public)")
                 }
             }
         }
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        let authError = error as NSError
-        if authError.code == ASAuthorizationError.canceled.rawValue {
-            errorMessage = nil
-        } else {
-            errorMessage = error.localizedDescription
+        Task { @MainActor in
+            let authError = error as NSError
+            if authError.code == ASAuthorizationError.canceled.rawValue {
+                errorMessage = nil
+                Self.log.info("AUTH apple UI: user canceled")
+            } else {
+                let message = error.localizedDescription
+                errorMessage = message.isEmpty ? "Sign in with Apple failed. Please try again." : message
+                Self.log.error("AUTH apple UI: system error code=\(authError.code) \(message, privacy: .public)")
+            }
+            loading = false
         }
-        loading = false
     }
 
+    /// Prefer key window; fall back to any visible window (iPad / multi-scene).
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows)
-            .first(where: { $0.isKeyWindow }) else {
-            return ASPresentationAnchor()
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for scene in scenes {
+            if let w = scene.windows.first(where: { $0.isKeyWindow }) {
+                Self.log.debug("AUTH apple UI: presentationAnchor keyWindow")
+                return w
+            }
         }
-        return window
+        for scene in scenes {
+            if let w = scene.windows.first(where: { !$0.isHidden && $0.alpha > 0 }) {
+                Self.log.debug("AUTH apple UI: presentationAnchor visible window")
+                return w
+            }
+        }
+        if let w = scenes.flatMap({ $0.windows }).first {
+            Self.log.warning("AUTH apple UI: presentationAnchor first window fallback")
+            return w
+        }
+        Self.log.error("AUTH apple UI: no window for presentationAnchor — Apple sheet may fail")
+        return UIWindow()
     }
 }
 

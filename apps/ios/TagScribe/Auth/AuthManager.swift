@@ -1,10 +1,13 @@
 import Foundation
 import AuthenticationServices
+import os.log
 
 /// iOS auth: Sign in with Apple → API JWT. No Firebase in the app.
 /// Token is stored in app group keychain for the share extension.
 final class AuthManager: NSObject, ObservableObject {
     static let shared = AuthManager()
+
+    private static let authLog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "TagScribe", category: "Auth")
 
     @Published private(set) var isSignedIn: Bool = false
     @Published private(set) var currentEmail: String?
@@ -12,6 +15,8 @@ final class AuthManager: NSObject, ObservableObject {
     @Published var lastSignInWithApple: Bool = false
 
     private let apiBaseURL = "https://tag-scribe.vercel.app"
+    /// Auth requests: explicit timeout for slow / offline networks (App Review).
+    private static let authRequestTimeout: TimeInterval = 45
     private static let privateRelaySuffix = "@privaterelay.appleid.com"
 
     override private init() {
@@ -74,6 +79,7 @@ final class AuthManager: NSObject, ObservableObject {
         guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
               let identityTokenData = appleIDCredential.identityToken,
               let identityToken = String(data: identityTokenData, encoding: .utf8) else {
+            Self.authLog.error("AUTH apple: invalid credential")
             throw AuthError.invalidAppleCredential
         }
 
@@ -83,21 +89,23 @@ final class AuthManager: NSObject, ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["identityToken": identityToken])
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
-
+        let (data, http) = try await performAuthData(request: request, operation: "apple")
         if http.statusCode == 401 {
+            Self.authLog.error("AUTH apple: HTTP 401")
             throw AuthError.invalidAppleToken
         }
         if http.statusCode != 200 {
+            Self.authLog.error("AUTH apple: HTTP \(http.statusCode)")
             throw AuthError.serverError(http.statusCode)
         }
 
         struct AppleAuthResponse: Decodable { let token: String }
         let decoded = try JSONDecoder().decode(AppleAuthResponse.self, from: data)
         guard JWTKeychain.save(decoded.token) else {
+            Self.authLog.error("AUTH apple: keychain save failed")
             throw AuthError.couldNotSaveToken
         }
+        Self.authLog.info("AUTH apple: success")
         await MainActor.run {
             updateStateFromKeychain()
             lastSignInWithApple = true
@@ -118,17 +126,22 @@ final class AuthManager: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        let (data, http) = try await performAuthData(request: request, operation: "login")
         if http.statusCode == 401 {
+            Self.authLog.error("AUTH login: HTTP 401")
             throw AuthError.invalidEmailPassword
         }
         if http.statusCode != 200 {
+            Self.authLog.error("AUTH login: HTTP \(http.statusCode)")
             throw AuthError.serverError(http.statusCode)
         }
         struct LoginResponse: Decodable { let token: String }
         let decoded = try JSONDecoder().decode(LoginResponse.self, from: data)
-        guard JWTKeychain.save(decoded.token) else { throw AuthError.couldNotSaveToken }
+        guard JWTKeychain.save(decoded.token) else {
+            Self.authLog.error("AUTH login: keychain save failed")
+            throw AuthError.couldNotSaveToken
+        }
+        Self.authLog.info("AUTH login: success")
         await MainActor.run { updateStateFromKeychain() }
     }
 
@@ -139,17 +152,22 @@ final class AuthManager: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        let (data, http) = try await performAuthData(request: request, operation: "signup")
         if http.statusCode == 409 {
+            Self.authLog.error("AUTH signup: HTTP 409 user exists")
             throw AuthError.userAlreadyExists
         }
         if http.statusCode != 200 {
+            Self.authLog.error("AUTH signup: HTTP \(http.statusCode)")
             throw AuthError.serverError(http.statusCode)
         }
         struct SignUpResponse: Decodable { let token: String }
         let decoded = try JSONDecoder().decode(SignUpResponse.self, from: data)
-        guard JWTKeychain.save(decoded.token) else { throw AuthError.couldNotSaveToken }
+        guard JWTKeychain.save(decoded.token) else {
+            Self.authLog.error("AUTH signup: keychain save failed")
+            throw AuthError.couldNotSaveToken
+        }
+        Self.authLog.info("AUTH signup: success")
         await MainActor.run { updateStateFromKeychain() }
     }
 
@@ -160,14 +178,18 @@ final class AuthManager: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines)])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        let (data, http) = try await performAuthData(request: request, operation: "forgot-password")
         if http.statusCode != 200 {
+            Self.authLog.error("AUTH forgot-password: HTTP \(http.statusCode)")
             throw AuthError.serverError(http.statusCode)
         }
         struct ForgotResponse: Decodable { let link: String }
         let decoded = try JSONDecoder().decode(ForgotResponse.self, from: data)
-        guard let linkURL = URL(string: decoded.link) else { throw AuthError.networkError }
+        guard let linkURL = URL(string: decoded.link) else {
+            Self.authLog.error("AUTH forgot-password: invalid link in response")
+            throw AuthError.networkError
+        }
+        Self.authLog.info("AUTH forgot-password: success")
         return linkURL
     }
 
@@ -180,14 +202,14 @@ final class AuthManager: NSObject, ObservableObject {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password])
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        let (_, http) = try await performAuthData(request: request, operation: "merge-accounts")
         if http.statusCode == 401 {
             throw AuthError.invalidEmailPassword
         }
         if http.statusCode != 200 {
             throw AuthError.serverError(http.statusCode)
         }
+        Self.authLog.info("AUTH merge-accounts: success")
     }
 
     /// Delete account via API. Call signOut() after success.
@@ -197,10 +219,34 @@ final class AuthManager: NSObject, ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AuthError.networkError }
+        let (_, http) = try await performAuthData(request: request, operation: "delete-account")
         if http.statusCode != 200 {
             throw AuthError.serverError(http.statusCode)
+        }
+        Self.authLog.info("AUTH delete-account: success")
+    }
+
+    /// Shared auth HTTP: timeout, logging, URLError → user-facing errors.
+    private func performAuthData(request: URLRequest, operation: String) async throws -> (Data, HTTPURLResponse) {
+        var req = request
+        req.timeoutInterval = Self.authRequestTimeout
+        Self.authLog.info("AUTH \(operation): request start url=\(req.url?.absoluteString ?? "", privacy: .public)")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse else {
+                Self.authLog.error("AUTH \(operation): non-HTTP response")
+                throw AuthError.networkError
+            }
+            Self.authLog.info("AUTH \(operation): response status=\(http.statusCode) bytes=\(data.count)")
+            return (data, http)
+        } catch let urlError as URLError {
+            Self.authLog.error("AUTH \(operation): URLError code=\(urlError.code.rawValue) \(urlError.localizedDescription, privacy: .public)")
+            throw AuthError.from(urlError: urlError)
+        } catch let authError as AuthError {
+            throw authError
+        } catch {
+            Self.authLog.error("AUTH \(operation): \(String(describing: error), privacy: .public)")
+            throw AuthError.networkError
         }
     }
 }
@@ -210,17 +256,41 @@ enum AuthError: LocalizedError {
     case invalidAppleToken
     case invalidEmailPassword
     case networkError
+    /// No connectivity (App Review–friendly copy).
+    case offline
+    /// Request timed out.
+    case timeout
+    /// DNS / cannot reach host.
+    case cannotReachServer
     case serverError(Int)
     case couldNotSaveToken
     case userAlreadyExists
     case unauthorized
+
+    static func from(urlError: URLError) -> AuthError {
+        switch urlError.code {
+        case .notConnectedToInternet, .dataNotAllowed, .callIsActive:
+            return .offline
+        case .timedOut:
+            return .timeout
+        case .cannotFindHost, .dnsLookupFailed, .cannotConnectToHost, .networkConnectionLost:
+            return .cannotReachServer
+        case .cancelled:
+            return .networkError
+        default:
+            return .networkError
+        }
+    }
 
     var errorDescription: String? {
         switch self {
         case .invalidAppleCredential: return "Invalid Sign in with Apple credential."
         case .invalidAppleToken: return "Apple sign-in was not recognized. Try again."
         case .invalidEmailPassword: return "Invalid email or password."
-        case .networkError: return "Network error. Check your connection."
+        case .networkError: return "Unable to connect. Please check your internet and try again."
+        case .offline: return "Unable to connect. Please check your internet."
+        case .timeout: return "The request timed out. Check your connection and try again."
+        case .cannotReachServer: return "Unable to reach the server. Check your internet and try again."
         case .serverError(let code): return "Server error (\(code)). Try again later."
         case .couldNotSaveToken: return "Could not save sign-in. Try again."
         case .userAlreadyExists: return "User already exists, please Login"
