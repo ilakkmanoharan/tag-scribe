@@ -69,6 +69,28 @@ struct LibraryItemRow: View {
         await MainActor.run { loadedImages = results }
     }
 
+    /// Copies `item` + `categories` into edit-sheet @State. Call before presenting the sheet and again when the sheet appears so the first open shows correct tags/category (SwiftUI can build the sheet before same-transaction state updates are visible).
+    private func syncEditFormFromItem() {
+        editTitle = item.title ?? ""
+        editContent = item.type == "text" ? item.content : ""
+        let contentIsUrl = item.content.hasPrefix("http://") || item.content.hasPrefix("https://")
+        editLink = item.type == "link" ? item.content : (item.type == "image" && contentIsUrl && !item.content.lowercased().contains("mp4") ? item.content : "")
+        editVideoUrl = item.type == "video" ? item.content : (item.type == "image" && contentIsUrl && item.content.lowercased().contains("mp4") ? item.content : "")
+        editHighlight = item.highlight ?? ""
+        editCaption = item.caption ?? ""
+        editTags = item.tags
+        editCategoryId = item.categoryId
+        editPhotoItems = []
+        editCategories = categories
+        editNewCategoryName = ""
+        if item.type == "image" {
+            editImageUrls = item.imageUrls ?? (item.content.isEmpty ? [] : [item.content])
+        } else {
+            editImageUrls = []
+        }
+        editExistingImageData = []
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
@@ -227,25 +249,11 @@ struct LibraryItemRow: View {
                             .buttonStyle(.plain)
 
                             Button {
-                                editTitle = item.title ?? ""
-                                editContent = item.type == "text" ? item.content : ""
-                                let contentIsUrl = item.content.hasPrefix("http://") || item.content.hasPrefix("https://")
-                                editLink = item.type == "link" ? item.content : (item.type == "image" && contentIsUrl && !item.content.lowercased().contains("mp4") ? item.content : "")
-                                editVideoUrl = item.type == "video" ? item.content : (item.type == "image" && contentIsUrl && item.content.lowercased().contains("mp4") ? item.content : "")
-                                editHighlight = item.highlight ?? ""
-                                editCaption = item.caption ?? ""
-                                editTags = item.tags
-                                editCategoryId = item.categoryId
-                                editPhotoItems = []
-                                editCategories = categories
-                                editNewCategoryName = ""
-                                if item.type == "image" {
-                                    editImageUrls = item.imageUrls ?? (item.content.isEmpty ? [] : [item.content])
-                                } else {
-                                    editImageUrls = []
+                                Task { @MainActor in
+                                    syncEditFormFromItem()
+                                    // Present after sync so the sheet reads up-to-date @State (fixes empty tags / None category on first open).
+                                    showEdit = true
                                 }
-                                editExistingImageData = []
-                                showEdit = true
                             } label: {
                                 Label("Edit", systemImage: "pencil")
                                     .font(.subheadline)
@@ -472,20 +480,29 @@ struct LibraryItemRow: View {
                             Text("Existing — tap to add:")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            FlowLayout(spacing: 6) {
+                            FlowLayout(spacing: 16, lineSpacing: 20) {
                                 ForEach(existingTags.filter { !editTags.contains($0) }, id: \.self) { tag in
-                                    Button(tag) {
+                                    Button {
                                         if !editTags.contains(where: { $0.lowercased() == tag.lowercased() }) {
                                             editTags.append(tag)
                                         }
+                                    } label: {
+                                        Text(tag)
+                                            .font(.subheadline)
+                                            .multilineTextAlignment(.center)
+                                            .lineLimit(2)
+                                            .minimumScaleFactor(0.85)
+                                            .padding(.horizontal, 18)
+                                            .padding(.vertical, 14)
+                                            .frame(minHeight: 44)
+                                            .background(Color.secondary.opacity(0.2))
+                                            .clipShape(Capsule())
                                     }
-                                    .font(.caption)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.secondary.opacity(0.2))
-                                    .clipShape(Capsule())
+                                    .buttonStyle(.plain)
+                                    .contentShape(Capsule())
                                 }
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -508,6 +525,11 @@ struct LibraryItemRow: View {
                             saveEdit()
                         }
                         .disabled(savingEdit)
+                    }
+                }
+                .onChange(of: showEdit) { _, isPresented in
+                    if isPresented {
+                        syncEditFormFromItem()
                     }
                 }
             }
@@ -695,9 +717,13 @@ struct LibraryItemRow: View {
     }
 }
 
-/// Simple flow layout for tag chips.
+/// Simple flow layout for tag chips. `spacing` = horizontal gap between items; `lineSpacing` = gap between rows (defaults to `spacing`).
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
+    var lineSpacing: CGFloat? = nil
+
+    private var rowGap: CGFloat { lineSpacing ?? spacing }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let result = arrange(proposal: proposal, subviews: subviews)
         return result.size
@@ -719,7 +745,7 @@ struct FlowLayout: Layout {
             let size = subview.sizeThatFits(.unspecified)
             if x + size.width > maxWidth && x > 0 {
                 x = 0
-                y += rowHeight + spacing
+                y += rowHeight + rowGap
                 rowHeight = 0
             }
             positions.append(CGPoint(x: x, y: y))
