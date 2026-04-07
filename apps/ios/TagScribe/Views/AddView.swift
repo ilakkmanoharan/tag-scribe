@@ -79,72 +79,61 @@ struct AddView: View {
             }
 
             Section("Tags (optional)") {
-                if !selectedTags.isEmpty {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 6) {
-                            ForEach(selectedTags, id: \.self) { tag in
-                                HStack(spacing: 4) {
-                                    Text(tag)
-                                    Button {
-                                        selectedTags.removeAll { $0 == tag }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.caption2)
-                                    }
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.secondary.opacity(0.2))
-                                .clipShape(Capsule())
-                            }
+                ForEach(selectedTags, id: \.self) { tag in
+                    HStack {
+                        Text(tag)
+                        Spacer()
+                        Button("Remove") {
+                            selectedTags.removeAll { $0 == tag }
                         }
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(selectedTags, id: \.self) { tag in
-                                    HStack(spacing: 4) {
-                                        Text(tag)
-                                        Button {
-                                            selectedTags.removeAll { $0 == tag }
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.caption2)
-                                        }
-                                    }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.secondary.opacity(0.2))
-                                    .clipShape(Capsule())
-                                }
-                            }
-                        }
+                        .font(.caption)
                     }
                 }
                 HStack {
                     TextField("New tag", text: $newTagInput)
-                    Button("+") {
+                    Button("Add") {
                         let t = newTagInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !t.isEmpty, !selectedTags.contains(t) {
+                        if !t.isEmpty, !selectedTags.contains(where: { $0.lowercased() == t.lowercased() }) {
                             selectedTags.append(t)
                             newTagInput = ""
                         }
                     }
+                    .disabled(newTagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                Text("Existing tags — tap to add:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 if existingTags.isEmpty {
                     Text("No existing tags.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
-                } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
-                        ForEach(existingTags.filter { !selectedTags.contains($0) }, id: \.self) { tag in
-                            Button(tag) {
-                                if !selectedTags.contains(tag) { selectedTags.append(tag) }
+                } else if !existingTags.filter({ tag in !selectedTags.contains(where: { $0.lowercased() == tag.lowercased() }) }).isEmpty {
+                    Text("Existing — tap to add:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    FlowLayout(spacing: 16, lineSpacing: 20) {
+                        ForEach(
+                            existingTags.filter { tag in !selectedTags.contains(where: { $0.lowercased() == tag.lowercased() }) },
+                            id: \.self
+                        ) { tag in
+                            Button {
+                                if !selectedTags.contains(where: { $0.lowercased() == tag.lowercased() }) {
+                                    selectedTags.append(tag)
+                                }
+                            } label: {
+                                Text(tag)
+                                    .font(.subheadline)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.85)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 14)
+                                    .frame(minHeight: 44)
+                                    .background(Color.secondary.opacity(0.2))
+                                    .clipShape(Capsule())
                             }
-                            .font(.caption)
+                            .buttonStyle(.plain)
+                            .contentShape(Capsule())
                         }
                     }
+                    .padding(.vertical, 4)
                 }
             }
 
