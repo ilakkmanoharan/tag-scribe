@@ -260,7 +260,6 @@ struct AddView: View {
         message = nil
         let photoItems = selectedPhotoItems
         let titleForTask = titleTrimmed
-        let linkForTask = linkJoined
         let videoForTask = videoTrimmed
         let highlightForTask = highlight
         let tagsForTask = selectedTags
@@ -288,9 +287,13 @@ struct AddView: View {
                     }
                 }
                 if hasLink {
+                    let linkContent = LinkStorage.packLinkItemContent(
+                        linkFieldValues: linkFields.map(\.value),
+                        videoURL: hasVideo ? videoTrimmed : nil
+                    )
                     _ = try await APIClient.shared.createItem(
                         type: "link",
-                        content: linkForTask,
+                        content: linkContent,
                         title: titleForTask,
                         highlight: highlightForTask.isEmpty ? nil : highlightForTask,
                         tags: tagsForTask,

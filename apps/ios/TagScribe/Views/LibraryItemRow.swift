@@ -46,10 +46,10 @@ struct LibraryItemRow: View {
         return 1
     }
 
-    /// URLs to show in the expanded row (multi-line `content` for `link` items).
+    /// URLs to show in the expanded row (multi-line `content` for `link` items; excludes embedded video line).
     private var displayLinkURLs: [URL] {
         if item.type == "link" {
-            return LinkStorage.linkLines(from: item.content).compactMap { URL(string: $0) }
+            return LinkStorage.displayWebLinkStrings(from: item.content).compactMap { URL(string: $0) }
         }
         if item.content.hasPrefix("http://") || item.content.hasPrefix("https://"),
            let first = LinkStorage.linkLines(from: item.content).first,
@@ -57,6 +57,20 @@ struct LibraryItemRow: View {
             return [u]
         }
         return []
+    }
+
+    private var displayEmbeddedVideoURL: URL? {
+        guard item.type == "link",
+              let v = LinkStorage.embeddedVideo(from: item.content),
+              LinkStorage.isValidHTTPURL(v) else { return nil }
+        return URL(string: v)
+    }
+
+    private var displayVideoItemURL: URL? {
+        guard item.type == "video" else { return nil }
+        let t = item.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard LinkStorage.isValidHTTPURL(t) else { return nil }
+        return URL(string: t)
     }
 
     private var imageURL: URL? {
@@ -83,14 +97,22 @@ struct LibraryItemRow: View {
         editContent = item.type == "text" ? item.content : ""
         let contentIsUrl = item.content.hasPrefix("http://") || item.content.hasPrefix("https://")
         if item.type == "link" {
-            let lines = LinkStorage.linkLines(from: item.content)
-            editLinkRows = lines.isEmpty ? [EditableLinkRow()] : lines.map { EditableLinkRow(value: $0) }
+            let (segments, embeddedVideo) = LinkStorage.parseLinkItemContent(item.content)
+            editLinkRows = segments.isEmpty ? [EditableLinkRow()] : segments.map { EditableLinkRow(value: $0) }
+            editVideoUrl = embeddedVideo ?? ""
         } else if item.type == "image", contentIsUrl, !item.content.lowercased().contains("mp4") {
             editLinkRows = [EditableLinkRow(value: item.content)]
         } else {
             editLinkRows = [EditableLinkRow()]
         }
-        editVideoUrl = item.type == "video" ? item.content : (item.type == "image" && contentIsUrl && item.content.lowercased().contains("mp4") ? item.content : "")
+        // `link` items set `editVideoUrl` from embedded line above; do not overwrite here.
+        if item.type == "video" {
+            editVideoUrl = item.content
+        } else if item.type == "image", contentIsUrl, item.content.lowercased().contains("mp4") {
+            editVideoUrl = item.content
+        } else if item.type != "link" {
+            editVideoUrl = ""
+        }
         editHighlight = item.highlight ?? ""
         editCaption = item.caption ?? ""
         editTags = item.tags
@@ -204,11 +226,46 @@ struct LibraryItemRow: View {
                         }
                     }
 
-                    ForEach(Array(displayLinkURLs.enumerated()), id: \.offset) { _, url in
-                        Link(destination: url) {
+                    if !displayLinkURLs.isEmpty {
+                        Text("Links")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ForEach(Array(displayLinkURLs.enumerated()), id: \.offset) { _, url in
+                            Link(destination: url) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "link")
+                                    Text(url.absoluteString)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                .font(.subheadline)
+                                .foregroundStyle(.blue)
+                            }
+                        }
+                    }
+
+                    if let videoURL = displayEmbeddedVideoURL {
+                        Text("Video URL")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Link(destination: videoURL) {
                             HStack(spacing: 6) {
-                                Image(systemName: "link")
-                                Text(url.absoluteString)
+                                Image(systemName: "play.rectangle")
+                                Text(videoURL.absoluteString)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.blue)
+                        }
+                    } else if let videoURL = displayVideoItemURL {
+                        Text("Video URL")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Link(destination: videoURL) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "play.rectangle")
+                                Text(videoURL.absoluteString)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                             }
@@ -218,16 +275,22 @@ struct LibraryItemRow: View {
                     }
 
                     if let highlight = item.highlight, !highlight.isEmpty {
+                        Text("Highlight")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         Text(highlight)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
                     if let caption = item.caption, !caption.isEmpty {
+                        Text("Caption")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         Text(caption)
                             .font(.subheadline)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
@@ -708,11 +771,14 @@ struct LibraryItemRow: View {
                 let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 let linkJoined = LinkStorage.joinedHTTPURLs(editLinkRows.map(\.value))
                 let videoVal = editVideoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+                let videoOptional: String? = videoVal.isEmpty ? nil : videoVal
                 let contentVal: String? = {
+                    if item.type == "link" {
+                        return LinkStorage.packLinkItemContent(linkFieldValues: editLinkRows.map(\.value), videoURL: videoOptional)
+                    }
                     if !linkJoined.isEmpty { return linkJoined }
-                    if !videoVal.isEmpty { return videoVal }
+                    if LinkStorage.isValidHTTPURL(videoVal) { return videoVal }
                     if item.type == "text" { return editContent.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    if item.type == "link" { return linkJoined }
                     if item.type == "video" { return item.content }
                     return nil
                 }()
