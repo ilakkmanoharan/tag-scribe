@@ -18,6 +18,9 @@ struct AddView: View {
     @State private var addingCategory = false
     @State private var message: String?
     @State private var isSuccess = false
+    @State private var hasDueDate = false
+    @State private var dueDatePicker = Date()
+    @State private var priorityChoice = ""
 
     private var hasValidTitle: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -96,6 +99,23 @@ struct AddView: View {
             Section("Highlight (optional)") {
                 TextEditor(text: $highlight)
                     .frame(minHeight: 80)
+            }
+
+            Section {
+                Toggle("Due date", isOn: $hasDueDate)
+                if hasDueDate {
+                    DatePicker("Due date", selection: $dueDatePicker, displayedComponents: .date)
+                }
+                Picker("Priority", selection: $priorityChoice) {
+                    Text("None").tag("")
+                    Text("Low").tag("low")
+                    Text("Medium").tag("medium")
+                    Text("High").tag("high")
+                }
+            } header: {
+                Text("Schedule (optional)")
+            } footer: {
+                Text("Due date and priority appear in the library when set.")
             }
 
             Section("Tags (optional)") {
@@ -264,6 +284,8 @@ struct AddView: View {
         let highlightForTask = highlight
         let tagsForTask = selectedTags
         let categoryForTask = categoryId
+        let dueForTask: String? = hasDueDate ? ItemScheduleFormat.isoString(from: dueDatePicker) : nil
+        let priorityForTask: String? = priorityChoice.isEmpty ? nil : priorityChoice
 
         Task {
             do {
@@ -282,7 +304,9 @@ struct AddView: View {
                             title: titleForTask,
                             caption: highlightForTask.isEmpty ? nil : highlightForTask,
                             tags: tagsForTask,
-                            categoryId: categoryForTask
+                            categoryId: categoryForTask,
+                            dueDate: dueForTask,
+                            priority: priorityForTask
                         )
                     }
                 }
@@ -298,7 +322,9 @@ struct AddView: View {
                         highlight: highlightForTask.isEmpty ? nil : highlightForTask,
                         tags: tagsForTask,
                         categoryId: categoryForTask,
-                        source: "manual"
+                        source: "manual",
+                        dueDate: dueForTask,
+                        priority: priorityForTask
                     )
                 } else if hasVideo {
                     _ = try await APIClient.shared.createItem(
@@ -308,7 +334,9 @@ struct AddView: View {
                         highlight: highlightForTask.isEmpty ? nil : highlightForTask,
                         tags: tagsForTask,
                         categoryId: categoryForTask,
-                        source: "manual"
+                        source: "manual",
+                        dueDate: dueForTask,
+                        priority: priorityForTask
                     )
                 } else if !hasImages {
                     _ = try await APIClient.shared.createItem(
@@ -318,7 +346,9 @@ struct AddView: View {
                         highlight: highlightForTask.isEmpty ? nil : highlightForTask,
                         tags: tagsForTask,
                         categoryId: categoryForTask,
-                        source: "manual"
+                        source: "manual",
+                        dueDate: dueForTask,
+                        priority: priorityForTask
                     )
                 }
                 await MainActor.run {
@@ -330,6 +360,8 @@ struct AddView: View {
                     highlight = ""
                     selectedTags = []
                     selectedPhotoItems = []
+                    hasDueDate = false
+                    priorityChoice = ""
                 }
             } catch APIError.unauthorized {
                 await MainActor.run {

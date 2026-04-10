@@ -63,7 +63,7 @@ final class APIClient {
     }
 
     /// Create an item. API: POST /api/items with JSON body.
-    func createItem(type: String, content: String, title: String? = nil, highlight: String? = nil, caption: String? = nil, tags: [String] = [], categoryId: String? = "cat-inbox", source: String? = "social") async throws -> Item {
+    func createItem(type: String, content: String, title: String? = nil, highlight: String? = nil, caption: String? = nil, tags: [String] = [], categoryId: String? = "cat-inbox", source: String? = "social", dueDate: String? = nil, priority: String? = nil) async throws -> Item {
         let url = URL(string: baseURL + "/api/items")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -76,6 +76,8 @@ final class APIClient {
         if !tags.isEmpty { body["tags"] = tags }
         if let cid = categoryId { body["categoryId"] = cid }
         if let s = source { body["source"] = s }
+        if let d = dueDate, !d.isEmpty { body["dueDate"] = d }
+        if let p = priority, !p.isEmpty { body["priority"] = p }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, http.statusCode == 401 {
@@ -88,7 +90,7 @@ final class APIClient {
     }
 
     /// Upload an image item. API: POST /api/items with multipart/form-data (image file, title, caption, tags, categoryId).
-    func uploadImage(imageData: Data, mimeType: String, title: String?, caption: String?, tags: [String], categoryId: String) async throws -> Item {
+    func uploadImage(imageData: Data, mimeType: String, title: String?, caption: String?, tags: [String], categoryId: String, dueDate: String? = nil, priority: String? = nil) async throws -> Item {
         let url = URL(string: baseURL + "/api/items")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -122,7 +124,20 @@ final class APIClient {
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"categoryId\"\r\n\r\n".data(using: .utf8)!)
         body.append(categoryId.data(using: .utf8)!)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+        if let d = dueDate, !d.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"dueDate\"\r\n\r\n".data(using: .utf8)!)
+            body.append(d.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        if let p = priority, !p.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"priority\"\r\n\r\n".data(using: .utf8)!)
+            body.append(p.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
 
         let (data, response) = try await session.data(for: request)
@@ -137,7 +152,7 @@ final class APIClient {
 
     /// Upload multiple images as one item. API: POST /api/items with multipart/form-data (multiple "image" parts, title, caption, tags, categoryId).
     /// Creates a single library entry with all images attached.
-    func uploadImages(imageDataList: [(Data, mimeType: String)], title: String?, caption: String?, tags: [String], categoryId: String) async throws -> Item {
+    func uploadImages(imageDataList: [(Data, mimeType: String)], title: String?, caption: String?, tags: [String], categoryId: String, dueDate: String? = nil, priority: String? = nil) async throws -> Item {
         guard !imageDataList.isEmpty else {
             throw APIError.server(400)
         }
@@ -177,7 +192,20 @@ final class APIClient {
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"categoryId\"\r\n\r\n".data(using: .utf8)!)
         body.append(categoryId.data(using: .utf8)!)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+        if let d = dueDate, !d.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"dueDate\"\r\n\r\n".data(using: .utf8)!)
+            body.append(d.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        if let p = priority, !p.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"priority\"\r\n\r\n".data(using: .utf8)!)
+            body.append(p.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
 
         let (data, response) = try await session.data(for: request)
@@ -233,7 +261,10 @@ final class APIClient {
         content: String? = nil,
         highlight: String? = nil,
         caption: String? = nil,
-        imageUrls: [String]? = nil
+        imageUrls: [String]? = nil,
+        dueDate: String? = nil,
+        priority: String? = nil,
+        includeScheduleFields: Bool = false
     ) async throws -> Item {
         let url = URL(string: baseURL + "/api/items/\(id)")!
         var request = URLRequest(url: url)
@@ -249,6 +280,18 @@ final class APIClient {
         if let v = highlight { body["highlight"] = v }
         if let v = caption { body["caption"] = v }
         if let urls = imageUrls { body["imageUrls"] = urls }
+        if includeScheduleFields {
+            if let d = dueDate, !d.isEmpty {
+                body["dueDate"] = d
+            } else {
+                body["dueDate"] = NSNull()
+            }
+            if let p = priority, !p.isEmpty {
+                body["priority"] = p
+            } else {
+                body["priority"] = NSNull()
+            }
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, http.statusCode == 401 {

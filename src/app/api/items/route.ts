@@ -84,6 +84,8 @@ export async function POST(request: Request) {
     let tags: string[];
     let categoryId: string | null;
     let sourceHint: SourceHint | undefined;
+    let dueDateForItem: string | null | undefined = undefined;
+    let priorityForItem: string | null | undefined = undefined;
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
@@ -135,6 +137,14 @@ export async function POST(request: Request) {
       categoryId = (formData.get("categoryId") as string) || "cat-inbox";
       sourceHint = "camera";
       highlight = undefined;
+      const ddM = formData.get("dueDate");
+      if (ddM != null && String(ddM).trim() !== "") {
+        dueDateForItem = String(ddM).trim().slice(0, 10);
+      }
+      const prM = formData.get("priority");
+      if (prM != null && String(prM).trim() !== "") {
+        priorityForItem = String(prM).trim().toLowerCase();
+      }
 
       if (result.uid) {
         await firestore.ensureInboxCategory(result.uid);
@@ -149,6 +159,8 @@ export async function POST(request: Request) {
           tags,
           categoryId,
           source: sourceHint,
+          dueDate: dueDateForItem ?? null,
+          priority: priorityForItem ?? null,
         });
         return NextResponse.json(item);
       }
@@ -164,11 +176,24 @@ export async function POST(request: Request) {
         tags,
         categoryId,
         source: sourceHint,
+        dueDate: dueDateForItem ?? null,
+        priority: priorityForItem ?? null,
       });
       return NextResponse.json(item);
     } else {
       const body = await request.json();
-      const { type: t, content, title: tit, highlight: hl, caption: cap, tags: tg, categoryId: catId, source } = body as {
+      const {
+        type: t,
+        content,
+        title: tit,
+        highlight: hl,
+        caption: cap,
+        tags: tg,
+        categoryId: catId,
+        source,
+        dueDate: dueD,
+        priority: pri,
+      } = body as {
         type: ItemType;
         content: string;
         title?: string;
@@ -177,6 +202,8 @@ export async function POST(request: Request) {
         tags?: string[];
         categoryId?: string | null;
         source?: string;
+        dueDate?: string | null;
+        priority?: string | null;
       };
       sourceHint = source && VALID_SOURCES.includes(source as SourceHint) ? (source as SourceHint) : undefined;
       if (!t || !content || typeof content !== "string") {
@@ -194,6 +221,22 @@ export async function POST(request: Request) {
       caption = cap?.trim() || undefined;
       tags = Array.isArray(tg) ? tg.map((x: string) => String(x).trim()).filter(Boolean) : [];
       categoryId = catId ?? "cat-inbox";
+      if (dueD !== undefined) {
+        dueDateForItem =
+          dueD === null || dueD === ""
+            ? null
+            : String(dueD)
+                .trim()
+                .slice(0, 10) || null;
+      }
+      if (pri !== undefined) {
+        priorityForItem =
+          pri === null || pri === ""
+            ? null
+            : String(pri)
+                .trim()
+                .toLowerCase() || null;
+      }
 
       if (type === "image" && contentToStore.startsWith("data:image/")) {
         const parsed = parseImageDataUrl(id, contentToStore);
@@ -233,6 +276,8 @@ export async function POST(request: Request) {
         tags,
         categoryId,
         source: sourceHint,
+        dueDate: dueDateForItem ?? null,
+        priority: priorityForItem ?? null,
       });
       return NextResponse.json(item);
     }
@@ -247,6 +292,8 @@ export async function POST(request: Request) {
       tags,
       categoryId,
       source: sourceHint,
+      dueDate: dueDateForItem ?? null,
+      priority: priorityForItem ?? null,
     });
     return NextResponse.json(item);
   } catch (e) {

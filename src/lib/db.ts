@@ -86,6 +86,16 @@ function initSchema(database: Database.Database) {
   } catch {
     // column already exists
   }
+  try {
+    database.exec("ALTER TABLE items ADD COLUMN due_date TEXT");
+  } catch {
+    // column already exists
+  }
+  try {
+    database.exec("ALTER TABLE items ADD COLUMN priority TEXT");
+  } catch {
+    // column already exists
+  }
 }
 
 function rowToItem(row: Record<string, unknown>): Item {
@@ -108,6 +118,8 @@ function rowToItem(row: Record<string, unknown>): Item {
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     archivedAt: (row.archived_at as string) ?? undefined,
+    dueDate: (row.due_date as string | null | undefined) ?? undefined,
+    priority: (row.priority as string | null | undefined) ?? undefined,
   };
 }
 
@@ -203,7 +215,7 @@ export function updateItemTags(id: string, tags: string[]): Item | undefined {
 }
 
 export type ItemUpdateFields = Partial<
-  Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags" | "imageUrls" | "type">
+  Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags" | "imageUrls" | "type" | "dueDate" | "priority">
 > & { archived?: boolean };
 
 export function updateItem(id: string, fields: ItemUpdateFields): Item | undefined {
@@ -226,11 +238,13 @@ export function updateItem(id: string, fields: ItemUpdateFields): Item | undefin
   if (typeof fields.archived === "boolean") {
     updates.archived_at = fields.archived ? now : null;
   }
+  if (fields.dueDate !== undefined) updates.due_date = fields.dueDate ?? null;
+  if (fields.priority !== undefined) updates.priority = fields.priority ?? null;
   database
     .prepare(
       `UPDATE items SET
         title = ?, content = ?, highlight = ?, caption = ?,
-        type = ?, tags = ?, category_id = ?, image_urls = ?, updated_at = ?, archived_at = ?
+        type = ?, tags = ?, category_id = ?, image_urls = ?, due_date = ?, priority = ?, updated_at = ?, archived_at = ?
       WHERE id = ?`
     )
     .run(
@@ -242,6 +256,8 @@ export function updateItem(id: string, fields: ItemUpdateFields): Item | undefin
       updates.tags ?? row.tags,
       updates.category_id ?? row.category_id,
       updates.image_urls ?? row.image_urls ?? "[]",
+      updates.due_date ?? row.due_date ?? null,
+      updates.priority ?? row.priority ?? null,
       now,
       updates.archived_at ?? row.archived_at,
       id
@@ -322,8 +338,8 @@ export function createItem(item: Omit<Item, "createdAt" | "updatedAt">): Item {
   const now = new Date().toISOString();
   database
     .prepare(
-      `INSERT INTO items (id, type, content, image_urls, title, highlight, caption, tags, category_id, source, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO items (id, type, content, image_urls, title, highlight, caption, tags, category_id, source, created_at, updated_at, due_date, priority)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       item.id,
@@ -337,7 +353,9 @@ export function createItem(item: Omit<Item, "createdAt" | "updatedAt">): Item {
       item.categoryId ?? null,
       item.source ?? null,
       now,
-      now
+      now,
+      item.dueDate ?? null,
+      item.priority ?? null
     );
   return { ...item, createdAt: now, updatedAt: now };
 }

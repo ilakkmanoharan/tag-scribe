@@ -46,6 +46,8 @@ function docToItem(id: string, data: Record<string, unknown>): Item {
     createdAt: (data.createdAt as string) ?? "",
     updatedAt: (data.updatedAt as string) ?? "",
     archivedAt: (data.archivedAt as string | null | undefined) ?? undefined,
+    dueDate: (data.dueDate as string | null | undefined) ?? undefined,
+    priority: (data.priority as string | null | undefined) ?? undefined,
   };
 }
 
@@ -189,6 +191,8 @@ export async function createItem(uid: string, item: Omit<Item, "createdAt" | "up
     tags: item.tags ?? [],
     categoryId: item.categoryId ?? null,
     source: item.source ?? null,
+    dueDate: item.dueDate ?? null,
+    priority: item.priority ?? null,
     createdAt,
     updatedAt,
     archivedAt: null,
@@ -229,7 +233,19 @@ export async function updateItemTags(uid: string, id: string, tags: string[]): P
 }
 
 export type ItemUpdateFields = Partial<
-  Pick<Item, "title" | "content" | "highlight" | "caption" | "categoryId" | "tags" | "imageUrls" | "type">
+  Pick<
+    Item,
+    | "title"
+    | "content"
+    | "highlight"
+    | "caption"
+    | "categoryId"
+    | "tags"
+    | "imageUrls"
+    | "type"
+    | "dueDate"
+    | "priority"
+  >
 > & { archived?: boolean };
 
 export async function updateItem(uid: string, id: string, fields: ItemUpdateFields): Promise<Item | undefined> {
@@ -252,6 +268,8 @@ export async function updateItem(uid: string, id: string, fields: ItemUpdateFiel
   if (typeof fields.archived === "boolean") {
     updates.archivedAt = fields.archived ? updatedAt : null;
   }
+  if (fields.dueDate !== undefined) updates.dueDate = fields.dueDate ?? null;
+  if (fields.priority !== undefined) updates.priority = fields.priority ?? null;
   await col.doc(id).update(updates);
   const merged: Item = {
     ...existing,
@@ -264,6 +282,8 @@ export async function updateItem(uid: string, id: string, fields: ItemUpdateFiel
     ...(fields.type !== undefined && { type: fields.type }),
     ...(Array.isArray(fields.tags) && { tags: fields.tags.map((t) => t.trim()).filter(Boolean) }),
     ...(typeof fields.archived === "boolean" && { archivedAt: fields.archived ? updatedAt : undefined }),
+    ...(fields.dueDate !== undefined && { dueDate: fields.dueDate ?? undefined }),
+    ...(fields.priority !== undefined && { priority: fields.priority ?? undefined }),
     updatedAt,
   };
   return merged;

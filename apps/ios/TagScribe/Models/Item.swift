@@ -84,4 +84,50 @@ struct Item: Codable, Identifiable {
     let createdAt: String
     let updatedAt: String
     var archivedAt: String?
+    /// Calendar due date `YYYY-MM-DD` (optional).
+    var dueDate: String?
+    /// e.g. `low`, `medium`, `high` (optional).
+    var priority: String?
+}
+
+/// ISO `yyyy-MM-dd` due dates and priority labels for UI.
+enum ItemScheduleFormat {
+    private static let isoFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    private static let displayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+
+    static func isoString(from date: Date) -> String {
+        isoFormatter.string(from: date)
+    }
+
+    static func date(fromIso s: String) -> Date? {
+        isoFormatter.date(from: s)
+    }
+
+    static func displayDueDate(fromIso s: String?) -> String? {
+        guard let s, !s.isEmpty, let d = isoFormatter.date(from: s) else { return nil }
+        return displayFormatter.string(from: d)
+    }
+
+    static func displayPriority(_ raw: String?) -> String? {
+        guard let r = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !r.isEmpty else { return nil }
+        switch r.lowercased() {
+        case "low": return "Low"
+        case "medium": return "Medium"
+        case "high": return "High"
+        default: return r.localizedCapitalized
+        }
+    }
 }

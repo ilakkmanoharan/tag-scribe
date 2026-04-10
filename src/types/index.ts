@@ -27,6 +27,10 @@ export interface Item {
   updatedAt: string; // ISO
   /** When set, item is archived (hidden from Library); used for grouping in Archive by date. */
   archivedAt?: string | null; // ISO
+  /** Optional due date (calendar day), `YYYY-MM-DD`. */
+  dueDate?: string | null;
+  /** Optional priority: e.g. `low` | `medium` | `high`. */
+  priority?: string | null;
 }
 
 export interface Category {

@@ -24,6 +24,8 @@ export async function PATCH(
       highlight,
       caption,
       imageUrls,
+      dueDate,
+      priority,
     } = body as {
       archived?: boolean;
       categoryId?: string;
@@ -33,6 +35,8 @@ export async function PATCH(
       highlight?: string;
       caption?: string;
       imageUrls?: string[];
+      dueDate?: string | null;
+      priority?: string | null;
     };
     const updateFields: firestore.ItemUpdateFields = {};
     if (typeof archived === "boolean") updateFields.archived = archived;
@@ -43,10 +47,29 @@ export async function PATCH(
     if (highlight !== undefined) updateFields.highlight = typeof highlight === "string" ? highlight : undefined;
     if (caption !== undefined) updateFields.caption = typeof caption === "string" ? caption : undefined;
     if (Array.isArray(imageUrls)) updateFields.imageUrls = imageUrls;
+    if (dueDate !== undefined) {
+      updateFields.dueDate =
+        dueDate === null || dueDate === ""
+          ? null
+          : typeof dueDate === "string"
+            ? dueDate.trim().slice(0, 10) || null
+            : null;
+    }
+    if (priority !== undefined) {
+      updateFields.priority =
+        priority === null || priority === ""
+          ? null
+          : typeof priority === "string"
+            ? priority.trim().toLowerCase() || null
+            : null;
+    }
 
     if (Object.keys(updateFields).length === 0) {
       return NextResponse.json(
-        { error: "Provide at least one of: archived, categoryId, tags, title, content, highlight, caption, imageUrls" },
+        {
+          error:
+            "Provide at least one of: archived, categoryId, tags, title, content, highlight, caption, imageUrls, dueDate, priority",
+        },
         { status: 400 }
       );
     }

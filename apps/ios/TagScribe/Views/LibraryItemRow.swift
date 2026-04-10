@@ -39,6 +39,9 @@ struct LibraryItemRow: View {
     @State private var editNewCategoryName = ""
     @State private var addingCategory = false
     @State private var removingImageAt: Int? = nil
+    @State private var editHasDueDate = false
+    @State private var editDueDatePicker = Date()
+    @State private var editPriority = ""
 
     private var imageCount: Int {
         guard item.type == "image" else { return 0 }
@@ -115,6 +118,14 @@ struct LibraryItemRow: View {
         }
         editHighlight = item.highlight ?? ""
         editCaption = item.caption ?? ""
+        if let d = item.dueDate, !d.isEmpty, let parsed = ItemScheduleFormat.date(fromIso: d) {
+            editHasDueDate = true
+            editDueDatePicker = parsed
+        } else {
+            editHasDueDate = false
+            editDueDatePicker = Date()
+        }
+        editPriority = item.priority ?? ""
         editTags = item.tags
         editCategoryId = item.categoryId
         editPhotoItems = []
@@ -292,6 +303,24 @@ struct LibraryItemRow: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if let dueDisplay = ItemScheduleFormat.displayDueDate(fromIso: item.dueDate) {
+                        Text("Due date")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(dueDisplay)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                    }
+
+                    if let priDisplay = ItemScheduleFormat.displayPriority(item.priority) {
+                        Text("Priority")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(priDisplay)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
                     }
 
                     if !item.tags.isEmpty {
@@ -474,6 +503,20 @@ struct LibraryItemRow: View {
                     Section("Caption (optional)") {
                         TextField("Caption", text: $editCaption, axis: .vertical)
                             .lineLimit(2...4)
+                    }
+                    Section {
+                        Toggle("Due date", isOn: $editHasDueDate)
+                        if editHasDueDate {
+                            DatePicker("Due date", selection: $editDueDatePicker, displayedComponents: .date)
+                        }
+                        Picker("Priority", selection: $editPriority) {
+                            Text("None").tag("")
+                            Text("Low").tag("low")
+                            Text("Medium").tag("medium")
+                            Text("High").tag("high")
+                        }
+                    } header: {
+                        Text("Schedule (optional)")
                     }
                     Section {
                         if item.type == "image" && !editExistingImageData.isEmpty {
@@ -784,6 +827,7 @@ struct LibraryItemRow: View {
                 }()
                 let highlightVal = editHighlight.trimmingCharacters(in: .whitespacesAndNewlines)
                 let captionVal = editCaption.trimmingCharacters(in: .whitespacesAndNewlines)
+                let dueForPatch: String? = editHasDueDate ? ItemScheduleFormat.isoString(from: editDueDatePicker) : nil
                 _ = try await APIClient.shared.updateItem(
                     id: item.id,
                     categoryId: editCategoryId,
@@ -791,7 +835,10 @@ struct LibraryItemRow: View {
                     title: titleVal.isEmpty ? nil : titleVal,
                     content: contentVal,
                     highlight: highlightVal.isEmpty ? nil : highlightVal,
-                    caption: captionVal.isEmpty ? nil : captionVal
+                    caption: captionVal.isEmpty ? nil : captionVal,
+                    dueDate: dueForPatch,
+                    priority: editPriority,
+                    includeScheduleFields: true
                 )
                 await MainActor.run {
                     showEdit = false
