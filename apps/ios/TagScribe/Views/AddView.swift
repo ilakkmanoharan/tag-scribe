@@ -4,7 +4,7 @@ import PhotosUI
 /// Add tab: full form matching web — Title, Link, Video, Pictures, Highlight, Tags (new + existing), Category (picker + add new).
 struct AddView: View {
     @State private var title = ""
-    @State private var link = ""
+    @State private var linkFields: [EditableLinkRow] = [EditableLinkRow()]
     @State private var videoUrl = ""
     @State private var highlight = ""
     @State private var selectedTags: [String] = []
@@ -27,10 +27,30 @@ struct AddView: View {
         Form {
             Section {
                 TextField("Display title", text: $title)
-                TextField("Paste or drop a link (optional, e.g. https://...)", text: $link)
-                    .textContentType(.URL)
-                    .autocapitalization(.none)
-                    .keyboardType(.URL)
+                ForEach($linkFields) { $field in
+                    HStack(alignment: .center, spacing: 8) {
+                        TextField("https://...", text: $field.value)
+                            .textContentType(.URL)
+                            .autocapitalization(.none)
+                            .keyboardType(.URL)
+                        if linkFields.count > 1 {
+                            Button {
+                                linkFields.removeAll { $0.id == field.id }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remove link row")
+                        }
+                    }
+                }
+                Button {
+                    linkFields.append(EditableLinkRow())
+                } label: {
+                    Label("Add link", systemImage: "plus.circle")
+                }
                 TextField("Video URL (optional, e.g. https://...mp4)", text: $videoUrl)
                     .textContentType(.URL)
                     .autocapitalization(.none)
@@ -38,7 +58,7 @@ struct AddView: View {
             } header: {
                 Text("Link & media")
             } footer: {
-                Text("Display title is required. Link, video URL, and pictures are optional.")
+                Text("Display title is required. Use Add link (+) for multiple URLs. Video URL and pictures are optional.")
             }
 
             Section {
@@ -224,9 +244,9 @@ struct AddView: View {
 
     private func save() {
         let titleTrimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let linkTrimmed = link.trimmingCharacters(in: .whitespacesAndNewlines)
+        let linkJoined = LinkStorage.joinedHTTPURLs(linkFields.map(\.value))
         let videoTrimmed = videoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hasLink = !linkTrimmed.isEmpty && (linkTrimmed.hasPrefix("http://") || linkTrimmed.hasPrefix("https://"))
+        let hasLink = !linkJoined.isEmpty
         let hasVideo = !videoTrimmed.isEmpty && (videoTrimmed.hasPrefix("http://") || videoTrimmed.hasPrefix("https://"))
         let hasImages = !selectedPhotoItems.isEmpty
 
@@ -240,7 +260,7 @@ struct AddView: View {
         message = nil
         let photoItems = selectedPhotoItems
         let titleForTask = titleTrimmed
-        let linkForTask = linkTrimmed
+        let linkForTask = linkJoined
         let videoForTask = videoTrimmed
         let highlightForTask = highlight
         let tagsForTask = selectedTags
@@ -302,7 +322,7 @@ struct AddView: View {
                     isSuccess = true
                     message = "Saved to library."
                     title = ""
-                    link = ""
+                    linkFields = [EditableLinkRow()]
                     videoUrl = ""
                     highlight = ""
                     selectedTags = []

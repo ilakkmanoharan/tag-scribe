@@ -22,7 +22,7 @@ struct LibraryItemRow: View {
     @State private var errorMessage: String?
     @State private var editTitle = ""
     @State private var editContent = ""
-    @State private var editLink = ""
+    @State private var editLinkRows: [EditableLinkRow] = [EditableLinkRow()]
     @State private var editVideoUrl = ""
     @State private var editHighlight = ""
     @State private var editCaption = ""
@@ -46,9 +46,17 @@ struct LibraryItemRow: View {
         return 1
     }
 
-    private var contentURL: URL? {
-        guard item.type == "link" || item.content.hasPrefix("http") else { return nil }
-        return URL(string: item.content)
+    /// URLs to show in the expanded row (multi-line `content` for `link` items).
+    private var displayLinkURLs: [URL] {
+        if item.type == "link" {
+            return LinkStorage.linkLines(from: item.content).compactMap { URL(string: $0) }
+        }
+        if item.content.hasPrefix("http://") || item.content.hasPrefix("https://"),
+           let first = LinkStorage.linkLines(from: item.content).first,
+           let u = URL(string: first) {
+            return [u]
+        }
+        return []
     }
 
     private var imageURL: URL? {
@@ -74,7 +82,14 @@ struct LibraryItemRow: View {
         editTitle = item.title ?? ""
         editContent = item.type == "text" ? item.content : ""
         let contentIsUrl = item.content.hasPrefix("http://") || item.content.hasPrefix("https://")
-        editLink = item.type == "link" ? item.content : (item.type == "image" && contentIsUrl && !item.content.lowercased().contains("mp4") ? item.content : "")
+        if item.type == "link" {
+            let lines = LinkStorage.linkLines(from: item.content)
+            editLinkRows = lines.isEmpty ? [EditableLinkRow()] : lines.map { EditableLinkRow(value: $0) }
+        } else if item.type == "image", contentIsUrl, !item.content.lowercased().contains("mp4") {
+            editLinkRows = [EditableLinkRow(value: item.content)]
+        } else {
+            editLinkRows = [EditableLinkRow()]
+        }
         editVideoUrl = item.type == "video" ? item.content : (item.type == "image" && contentIsUrl && item.content.lowercased().contains("mp4") ? item.content : "")
         editHighlight = item.highlight ?? ""
         editCaption = item.caption ?? ""
@@ -189,11 +204,11 @@ struct LibraryItemRow: View {
                         }
                     }
 
-                    if let url = contentURL {
+                    ForEach(Array(displayLinkURLs.enumerated()), id: \.offset) { _, url in
                         Link(destination: url) {
                             HStack(spacing: 6) {
                                 Image(systemName: "link")
-                                Text(item.content)
+                                Text(url.absoluteString)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                             }
@@ -349,10 +364,34 @@ struct LibraryItemRow: View {
                     Section("Title") {
                         TextField("Optional title", text: $editTitle)
                     }
-                    Section("Link (optional)") {
-                        TextField("Paste or drop a link (e.g. https://...)", text: $editLink)
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
+                    Section {
+                        ForEach($editLinkRows) { $row in
+                            HStack(alignment: .center, spacing: 8) {
+                                TextField("https://...", text: $row.value)
+                                    .keyboardType(.URL)
+                                    .textInputAutocapitalization(.never)
+                                if editLinkRows.count > 1 {
+                                    Button {
+                                        editLinkRows.removeAll { $0.id == row.id }
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.title3)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Remove link row")
+                                }
+                            }
+                        }
+                        Button {
+                            editLinkRows.append(EditableLinkRow())
+                        } label: {
+                            Label("Add link", systemImage: "plus.circle")
+                        }
+                    } header: {
+                        Text("Links (optional)")
+                    } footer: {
+                        Text("Use Add link (+) for multiple URLs. They are stored on this item.")
                     }
                     Section("Video URL (optional)") {
                         TextField("e.g. https://...mp4", text: $editVideoUrl)
@@ -667,13 +706,14 @@ struct LibraryItemRow: View {
                 }
 
                 let titleVal = editTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                let linkVal = editLink.trimmingCharacters(in: .whitespacesAndNewlines)
+                let linkJoined = LinkStorage.joinedHTTPURLs(editLinkRows.map(\.value))
                 let videoVal = editVideoUrl.trimmingCharacters(in: .whitespacesAndNewlines)
                 let contentVal: String? = {
-                    if !linkVal.isEmpty { return linkVal }
+                    if !linkJoined.isEmpty { return linkJoined }
                     if !videoVal.isEmpty { return videoVal }
                     if item.type == "text" { return editContent.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    if item.type == "link" || item.type == "video" { return item.content }
+                    if item.type == "link" { return linkJoined }
+                    if item.type == "video" { return item.content }
                     return nil
                 }()
                 let highlightVal = editHighlight.trimmingCharacters(in: .whitespacesAndNewlines)
