@@ -1,11 +1,11 @@
 /**
  * Firestore access layer — per-user collections.
- * users/{uid}/categories/{categoryId}, users/{uid}/items/{itemId}
+ * users/{uid}/categories/{categoryId}, users/{uid}/items/{itemId}, users/{uid}/lists/{listId}
  * Used from API routes only (server); requires uid from verified token.
  */
 
 import { getAdminFirestore } from "./firebase-admin";
-import type { Item, Category } from "@/types";
+import type { Item, Category, SavedList } from "@/types";
 
 function userCategories(uid: string) {
   const db = getAdminFirestore();
@@ -17,6 +17,12 @@ function userItems(uid: string) {
   const db = getAdminFirestore();
   if (!db) return null;
   return db.collection("users").doc(uid).collection("items");
+}
+
+function userLists(uid: string) {
+  const db = getAdminFirestore();
+  if (!db) return null;
+  return db.collection("users").doc(uid).collection("lists");
 }
 
 function docToCategory(id: string, data: Record<string, unknown>): Category {
@@ -458,18 +464,57 @@ export async function setMergedInto(
     );
 }
 
-/** Delete all user data (categories, items, user doc) for the given uid. */
+function docToList(id: string, data: Record<string, unknown>): SavedList {
+  return {
+    id,
+    name: (data.name as string) ?? "",
+    itemIds: Array.isArray(data.itemIds) ? (data.itemIds as string[]) : [],
+    createdAt: (data.createdAt as string) ?? "",
+    updatedAt: (data.updatedAt as string) ?? "",
+  };
+}
+
+export async function getAllLists(uid: string): Promise<SavedList[]> {
+  const col = userLists(uid);
+  if (!col) return [];
+  const snap = await col.get();
+  return snap.docs
+    .map((d) => docToList(d.id, d.data()))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export async function createList(
+  uid: string,
+  list: Omit<SavedList, "createdAt" | "updatedAt">
+): Promise<SavedList> {
+  const col = userLists(uid);
+  if (!col) throw new Error("Firestore not configured");
+  const createdAt = now();
+  const updatedAt = createdAt;
+  await col.doc(list.id).set({
+    name: list.name,
+    itemIds: list.itemIds,
+    createdAt,
+    updatedAt,
+  });
+  return { ...list, createdAt, updatedAt };
+}
+
+/** Delete all user data (categories, items, lists, user doc) for the given uid. */
 export async function deleteUserData(uid: string): Promise<void> {
   const db = getAdminFirestore();
   if (!db) return;
   const userRef = db.collection("users").doc(uid);
   const catCol = userRef.collection("categories");
   const itemCol = userRef.collection("items");
+  const listCol = userRef.collection("lists");
 
   const catSnap = await catCol.get();
   for (const d of catSnap.docs) await d.ref.delete();
   const itemSnap = await itemCol.get();
   for (const d of itemSnap.docs) await d.ref.delete();
+  const listSnap = await listCol.get();
+  for (const d of listSnap.docs) await d.ref.delete();
   await userRef.delete();
 }
 

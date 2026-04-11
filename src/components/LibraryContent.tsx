@@ -61,6 +61,16 @@ export function LibraryContent() {
 
   const list = items ?? [];
 
+  useEffect(() => {
+    if (typeof window === "undefined" || list.length === 0) return;
+    const id = new URLSearchParams(window.location.search).get("item");
+    if (!id) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(`library-item-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    return () => window.clearTimeout(t);
+  }, [list]);
+
   return (
     <div>
       <div className="mb-4 flex items-center gap-4">
@@ -87,7 +97,7 @@ export function LibraryContent() {
       ) : (
         <ul className="mt-6 space-y-4">
           {list.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} id={`library-item-${item.id}`}>
               <ItemCard item={item} showArchive showDelete />
             </li>
           ))}

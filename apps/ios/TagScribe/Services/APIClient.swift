@@ -394,6 +394,40 @@ final class APIClient {
             throw APIError.server(http.statusCode)
         }
     }
+
+    /// Load saved lists. API: GET /api/lists
+    func getLists() async throws -> [SavedList] {
+        let url = URL(string: baseURL + "/api/lists")!
+        var request = URLRequest(url: url)
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode([SavedList].self, from: data)
+    }
+
+    /// Create a list from item ids. API: POST /api/lists with { name, itemIds }
+    func createList(name: String, itemIds: [String]) async throws -> SavedList {
+        let url = URL(string: baseURL + "/api/lists")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        let body: [String: Any] = ["name": name, "itemIds": itemIds]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(SavedList.self, from: data)
+    }
 }
 
 enum APIError: Error {

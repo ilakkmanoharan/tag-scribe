@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UIKit
 
 /// One library item: collapsed (title + tags) or expanded (link, highlight, tags, Add tag, Archive/Unarchive, Move, Delete).
 struct LibraryItemRow: View {
@@ -11,6 +12,10 @@ struct LibraryItemRow: View {
     var isArchived: Bool = false
     var onUpdated: () async -> Void
     var onDeleted: () -> Void
+    /// Multi-select in Library: show checkbox; `onToggleSelection` toggles this row in the parent's selection set.
+    var selectionMode: Bool = false
+    var isSelected: Bool = false
+    var onToggleSelection: (() -> Void)? = nil
 
     @State private var isExpanded = false
     @State private var newTagInput = ""
@@ -142,38 +147,51 @@ struct LibraryItemRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title ?? String(item.content.prefix(50)))
-                            .lineLimit(1)
-                            .foregroundStyle(.primary)
-                        if !item.tags.isEmpty || categoryName != nil {
-                            HStack(spacing: 6) {
-                                if let cat = categoryName {
-                                    Text(cat)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if !item.tags.isEmpty {
-                                    Text(item.tags.prefix(3).joined(separator: ", "))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
+            HStack(alignment: .center, spacing: 12) {
+                if selectionMode, let toggle = onToggleSelection {
+                    Button {
+                        toggle()
+                    } label: {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .font(.title2)
+                            .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isSelected ? "Deselect" : "Select")
+                }
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.title ?? String(item.content.prefix(50)))
+                                .lineLimit(1)
+                                .foregroundStyle(.primary)
+                            if !item.tags.isEmpty || categoryName != nil {
+                                HStack(spacing: 6) {
+                                    if let cat = categoryName {
+                                        Text(cat)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if !item.tags.isEmpty {
+                                        Text(item.tags.prefix(3).joined(separator: ", "))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
                                 }
                             }
                         }
+                        Spacer()
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    Spacer()
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
                 }
-                .padding(.vertical, 8)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: 10) {
@@ -405,6 +423,20 @@ struct LibraryItemRow: View {
                                     .padding(.vertical, 10)
                             }
                             .accessibilityLabel("Delete")
+                            .buttonStyle(.plain)
+                            .disabled(loading)
+
+                            Spacer(minLength: 48)
+
+                            Button {
+                                presentLibraryItemShare()
+                            } label: {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                            }
+                            .accessibilityLabel("Share link to this item")
                             .buttonStyle(.plain)
                             .disabled(loading)
                         }
@@ -869,6 +901,47 @@ struct LibraryItemRow: View {
             }
             await MainActor.run { loading = false }
         }
+    }
+
+    /// Web library URL with `?item=` so recipients can open the site (and scroll to the item when logged in).
+    private func libraryItemShareWebURL() -> URL? {
+        var trimmed = APIClient.shared.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if !trimmed.lowercased().hasPrefix("http") {
+            trimmed = "https://\(trimmed)"
+        }
+        var c = URLComponents(string: trimmed)
+        c?.queryItems = [URLQueryItem(name: "item", value: item.id)]
+        return c?.url
+    }
+
+    private func libraryItemShareText() -> String {
+        let t = item.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let headline = (t?.isEmpty == false) ? t! : "Tag Scribe item"
+        var parts = [headline, ""]
+        if let u = libraryItemShareWebURL() {
+            parts.append("Open in browser: \(u.absoluteString)")
+        }
+        parts.append("Open in app: tagscribe://item/\(item.id)")
+        return parts.joined(separator: "\n")
+    }
+
+    private func presentLibraryItemShare() {
+        guard let url = libraryItemShareWebURL() else { return }
+        let text = libraryItemShareText()
+        let av = UIActivityViewController(activityItems: [text, url], applicationActivities: nil)
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive })
+                ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let root = scene.windows.first(where: \.isKeyWindow)?.rootViewController else { return }
+        if let pop = av.popoverPresentationController {
+            pop.sourceView = root.view
+            pop.sourceRect = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = [.up, .down]
+        }
+        var top = root
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+        top.present(av, animated: true)
     }
 }
 

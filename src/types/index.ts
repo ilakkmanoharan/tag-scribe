@@ -47,3 +47,12 @@ export interface Tag {
   name: string; // normalized, e.g. lowercase
   itemIds?: string[]; // optional for quick lookup
 }
+
+/** User-defined list of library item ids (e.g. curated sets from multi-select). */
+export interface SavedList {
+  id: string;
+  name: string;
+  itemIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}

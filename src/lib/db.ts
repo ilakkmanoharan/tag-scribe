@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import path from "path";
-import type { Item, Category } from "@/types";
+import type { Item, Category, SavedList } from "@/types";
 
 const DB_PATH = path.join(process.cwd(), "private", "tag-scribe.db");
 
@@ -96,6 +96,15 @@ function initSchema(database: Database.Database) {
   } catch {
     // column already exists
   }
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS lists (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      item_ids TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
 }
 
 function rowToItem(row: Record<string, unknown>): Item {
@@ -358,4 +367,30 @@ export function createItem(item: Omit<Item, "createdAt" | "updatedAt">): Item {
       item.priority ?? null
     );
   return { ...item, createdAt: now, updatedAt: now };
+}
+
+function rowToList(row: Record<string, unknown>): SavedList {
+  const itemIds = JSON.parse((row.item_ids as string) || "[]") as string[];
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    itemIds,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+export function getAllLists(): SavedList[] {
+  const database = getDb();
+  const rows = database.prepare("SELECT * FROM lists ORDER BY updated_at DESC").all() as Record<string, unknown>[];
+  return rows.map(rowToList);
+}
+
+export function createList(list: Omit<SavedList, "createdAt" | "updatedAt">): SavedList {
+  const database = getDb();
+  const now = new Date().toISOString();
+  database
+    .prepare(`INSERT INTO lists (id, name, item_ids, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
+    .run(list.id, list.name, JSON.stringify(list.itemIds), now, now);
+  return { ...list, createdAt: now, updatedAt: now };
 }

@@ -8,6 +8,13 @@ struct LibraryView: View {
     @State private var existingTags: [String] = []
     @State private var errorMessage: String?
     @State private var loading = true
+    @State private var isSelecting = false
+    @State private var selectedItemIds = Set<String>()
+    @State private var showCreateListSheet = false
+    @State private var newListName = ""
+    @State private var createListSaving = false
+    @State private var createListBanner: String?
+    @State private var createListBannerIsError = false
 
     private func categoryName(for id: String?) -> String? {
         guard let id = id else { return nil }
@@ -41,26 +48,104 @@ struct LibraryView: View {
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(items) { item in
-                        LibraryItemRow(
-                            item: item,
-                            categoryName: categoryName(for: item.categoryId),
-                            existingTags: existingTags,
-                            categories: categories,
-                            onUpdated: { await load() },
-                            onDeleted: { Task { await load() } }
-                        )
+                VStack(spacing: 0) {
+                    if isSelecting {
+                        HStack(spacing: 20) {
+                            Text("\(selectedItemIds.count) selected")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 24)
+                            Button("Create list") {
+                                newListName = ""
+                                showCreateListSheet = true
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .disabled(selectedItemIds.isEmpty)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(Color(.secondarySystemGroupedBackground))
+                    }
+                    if let banner = createListBanner {
+                        Text(banner)
+                            .font(.caption)
+                            .foregroundStyle(createListBannerIsError ? Color.red : Color.green)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 12)
+                    }
+                    List {
+                        ForEach(items) { item in
+                            LibraryItemRow(
+                                item: item,
+                                categoryName: categoryName(for: item.categoryId),
+                                existingTags: existingTags,
+                                categories: categories,
+                                onUpdated: { await load() },
+                                onDeleted: { Task { await load() } },
+                                selectionMode: isSelecting,
+                                isSelected: selectedItemIds.contains(item.id),
+                                onToggleSelection: {
+                                    if selectedItemIds.contains(item.id) {
+                                        selectedItemIds.remove(item.id)
+                                    } else {
+                                        selectedItemIds.insert(item.id)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
         .navigationTitle("Library")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if !loading, errorMessage == nil, !items.isEmpty {
+                    Button(isSelecting ? "Done" : "Select") {
+                        if isSelecting {
+                            isSelecting = false
+                            selectedItemIds.removeAll()
+                        } else {
+                            isSelecting = true
+                        }
+                    }
+                }
+            }
+        }
         .refreshable { await load() }
         .task { await load() }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 Task { await load() }
+            }
+        }
+        .sheet(isPresented: $showCreateListSheet) {
+            NavigationStack {
+                Form {
+                    Section {
+                        TextField("List name", text: $newListName)
+                    } footer: {
+                        Text("Creates a saved list from the selected items. You can extend the app later to open lists from here.")
+                    }
+                }
+                .navigationTitle("New list")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showCreateListSheet = false
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            Task { await saveNewList() }
+                        }
+                        .disabled(newListName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || createListSaving || selectedItemIds.isEmpty)
+                    }
+                }
             }
         }
     }
@@ -80,6 +165,38 @@ struct LibraryView: View {
             errorMessage = "Not signed in"
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func saveNewList() async {
+        let name = newListName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !selectedItemIds.isEmpty else { return }
+        await MainActor.run { createListSaving = true }
+        let ids = Array(selectedItemIds)
+        do {
+            _ = try await APIClient.shared.createList(name: name, itemIds: ids)
+            await MainActor.run {
+                showCreateListSheet = false
+                newListName = ""
+                isSelecting = false
+                selectedItemIds.removeAll()
+                createListBannerIsError = false
+                createListBanner = "List “\(name)” saved (\(ids.count) items)."
+                createListSaving = false
+            }
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            await MainActor.run { createListBanner = nil }
+        } catch {
+            await MainActor.run {
+                createListBannerIsError = true
+                createListBanner = error.localizedDescription
+                createListSaving = false
+            }
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            await MainActor.run {
+                createListBanner = nil
+                createListBannerIsError = false
+            }
         }
     }
 }
