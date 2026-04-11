@@ -125,7 +125,8 @@ struct LibraryItemRow: View {
             editHasDueDate = false
             editDueDatePicker = Date()
         }
-        editPriority = item.priority ?? ""
+        let p = (item.priority ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        editPriority = ["low", "medium", "high"].contains(p) ? p : ""
         editTags = item.tags
         editCategoryId = item.categoryId
         editPhotoItems = []
@@ -515,6 +516,7 @@ struct LibraryItemRow: View {
                             Text("Medium").tag("medium")
                             Text("High").tag("high")
                         }
+                        .pickerStyle(.menu)
                     } header: {
                         Text("Schedule (optional)")
                     }

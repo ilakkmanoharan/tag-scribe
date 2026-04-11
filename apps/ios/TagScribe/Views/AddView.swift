@@ -112,6 +112,7 @@ struct AddView: View {
                     Text("Medium").tag("medium")
                     Text("High").tag("high")
                 }
+                .pickerStyle(.menu)
             } header: {
                 Text("Schedule (optional)")
             } footer: {
