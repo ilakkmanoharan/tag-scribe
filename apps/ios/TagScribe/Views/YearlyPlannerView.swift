@@ -261,33 +261,75 @@ private struct DayEntriesSheet: View {
     let dayISO: String
     let entries: [PlannerEntry]
 
+    @State private var allItems: [Item] = []
+    @State private var allLists: [SavedList] = []
+    @State private var categories: [Category] = []
+    @State private var existingTags: [String] = []
+    @State private var loadingContext = true
+    @State private var contextError: String?
+
     private var title: String {
         ItemScheduleFormat.displayDueDate(fromIso: dayISO) ?? dayISO
     }
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(entries) { entry in
-                    HStack(alignment: .top, spacing: 10) {
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(PlannerPalette.background(for: entry.priority))
-                            .frame(width: 6)
-                            .padding(.vertical, 2)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(entry.title)
-                                .font(.body)
-                            Text(entry.kindLabel)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if let p = ItemScheduleFormat.displayPriority(entry.priority) {
-                                Text("Priority: \(p)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+            Group {
+                if loadingContext {
+                    ProgressView("Loading…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let err = contextError {
+                    Text(err)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                } else {
+                    List {
+                        ForEach(entries) { entry in
+                            switch entry.kind {
+                            case .item(let snapshot):
+                                if let item = allItems.first(where: { $0.id == snapshot.id }) {
+                                    LibraryItemRow(
+                                        item: item,
+                                        categoryName: categoryName(for: item.categoryId),
+                                        existingTags: existingTags,
+                                        categories: categories,
+                                        onUpdated: { await loadContext() },
+                                        onDeleted: { Task { await loadContext() } }
+                                    )
+                                } else {
+                                    removedRow(title: entry.title, subtitle: "This item is no longer in your library.")
+                                }
+                            case .list(let snapshot):
+                                if let list = allLists.first(where: { $0.id == snapshot.id }) {
+                                    let rows = orderedItems(for: list)
+                                    DisclosureGroup {
+                                        if rows.isEmpty {
+                                            Text("No items in this list, or they were removed from the library.")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                                .padding(.vertical, 4)
+                                        } else {
+                                            ForEach(rows) { item in
+                                                LibraryItemRow(
+                                                    item: item,
+                                                    categoryName: categoryName(for: item.categoryId),
+                                                    existingTags: existingTags,
+                                                    categories: categories,
+                                                    onUpdated: { await loadContext() },
+                                                    onDeleted: { Task { await loadContext() } }
+                                                )
+                                            }
+                                        }
+                                    } label: {
+                                        listGroupLabel(list)
+                                    }
+                                } else {
+                                    removedRow(title: entry.title, subtitle: "This list no longer exists.")
+                                }
                             }
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 }
             }
             .navigationTitle(title)
@@ -296,6 +338,77 @@ private struct DayEntriesSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .task { await loadContext() }
+        }
+    }
+
+    private func removedRow(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.body)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// Same disclosure styling as planner chips: priority tint + list meta.
+    private func listGroupLabel(_ list: SavedList) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(PlannerPalette.background(for: list.priority))
+                .frame(width: 6)
+                .padding(.vertical, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(list.name)
+                    .font(.body.weight(.semibold))
+                Text("List · \(list.itemIds.count) items")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let p = ItemScheduleFormat.displayPriority(list.priority) {
+                    Text("List priority: \(p)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func categoryName(for id: String?) -> String? {
+        guard let id = id else { return nil }
+        return categories.first(where: { $0.id == id })?.name
+    }
+
+    private func orderedItems(for list: SavedList) -> [Item] {
+        let byId = Dictionary(uniqueKeysWithValues: allItems.map { ($0.id, $0) })
+        return list.itemIds.compactMap { byId[$0] }
+    }
+
+    private func loadContext() async {
+        await MainActor.run {
+            loadingContext = true
+            contextError = nil
+        }
+        do {
+            async let itemsTask = APIClient.shared.getItems(archived: false)
+            async let listsTask = APIClient.shared.getLists()
+            async let categoriesTask = APIClient.shared.getCategories()
+            async let tagsTask = APIClient.shared.getTags()
+            let (items, lists, cats, tags) = try await (itemsTask, listsTask, categoriesTask, tagsTask)
+            await MainActor.run {
+                allItems = items
+                allLists = lists
+                categories = cats
+                existingTags = tags
+                loadingContext = false
+            }
+        } catch {
+            await MainActor.run {
+                contextError = error.localizedDescription
+                loadingContext = false
             }
         }
     }
@@ -313,13 +426,6 @@ struct PlannerEntry: Identifiable {
     let title: String
     let priority: String?
     let kind: Kind
-
-    var kindLabel: String {
-        switch kind {
-        case .item: return "Library item"
-        case .list: return "List"
-        }
-    }
 
     static func fromItem(_ item: Item) -> PlannerEntry {
         let title: String
