@@ -128,7 +128,7 @@ struct LibraryView: View {
                     Section {
                         TextField("List name", text: $newListName)
                     } footer: {
-                        Text("Creates a saved list from the selected items. You can extend the app later to open lists from here.")
+                        Text("Creates a private list from the selected items. Open it anytime from the Lists tab.")
                     }
                 }
                 .navigationTitle("New list")

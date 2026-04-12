@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Main app content: tabbed UI (Library, Archive, Categories, Tags, Add) matching web. Sign out in each tab's toolbar.
+/// Main app content: tabbed UI (Library, Archive, Categories, Tags, Lists, Add, Settings).
 struct ContentView: View {
     var body: some View {
         TabView {
@@ -8,6 +8,7 @@ struct ContentView: View {
             tab(NavigationStack { ArchiveView().toolbar { toolbarContent } }, title: "Archive", systemImage: "archivebox")
             tab(NavigationStack { CategoriesView().toolbar { toolbarContent } }, title: "Categories", systemImage: "folder")
             tab(NavigationStack { TagsView().toolbar { toolbarContent } }, title: "Tags", systemImage: "tag")
+            tab(NavigationStack { ListsView().toolbar { toolbarContent } }, title: "Lists", systemImage: "list.bullet.rectangle")
             tab(NavigationStack { AddView().toolbar { toolbarContent } }, title: "Add", systemImage: "plus.circle")
             tab(NavigationStack { SettingsView() }, title: "Settings", systemImage: "gearshape")
         }

@@ -31,6 +31,7 @@
 		BLD035 /* LibraryItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF035 /* LibraryItemRow.swift */; };
 		BLD036 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF036 /* SettingsView.swift */; };
 		BLD037 /* SavedList.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF037 /* SavedList.swift */; };
+		BLD038 /* ListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF038 /* ListsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +86,7 @@
 		REF035 /* LibraryItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemRow.swift; sourceTree = "<group>"; };
 		REF036 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		REF037 /* SavedList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedList.swift; sourceTree = "<group>"; };
+		REF038 /* ListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -189,6 +191,7 @@
 				REF034 /* AddView.swift */,
 				REF035 /* LibraryItemRow.swift */,
 				REF036 /* SettingsView.swift */,
+				REF038 /* ListsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -362,6 +365,7 @@
 				BLD035 /* LibraryItemRow.swift in Sources */,
 				BLD036 /* SettingsView.swift in Sources */,
 				BLD037 /* SavedList.swift in Sources */,
+				BLD038 /* ListsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
