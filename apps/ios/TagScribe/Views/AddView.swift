@@ -290,6 +290,9 @@ struct AddView: View {
 
         Task {
             do {
+                // When photos are saved via multipart, that already creates one library item. Do not also
+                // POST a link/video/text item or users get a duplicate (often a bare link row + image row).
+                var didSaveAsImageItem = false
                 if hasImages {
                     var imagePayloads: [(Data, mimeType: String)] = []
                     for item in photoItems {
@@ -309,48 +312,51 @@ struct AddView: View {
                             dueDate: dueForTask,
                             priority: priorityForTask
                         )
+                        didSaveAsImageItem = true
                     }
                 }
-                if hasLink {
-                    let linkContent = LinkStorage.packLinkItemContent(
-                        linkFieldValues: linkFields.map(\.value),
-                        videoURL: hasVideo ? videoTrimmed : nil
-                    )
-                    _ = try await APIClient.shared.createItem(
-                        type: "link",
-                        content: linkContent,
-                        title: titleForTask,
-                        highlight: highlightForTask.isEmpty ? nil : highlightForTask,
-                        tags: tagsForTask,
-                        categoryId: categoryForTask,
-                        source: "manual",
-                        dueDate: dueForTask,
-                        priority: priorityForTask
-                    )
-                } else if hasVideo {
-                    _ = try await APIClient.shared.createItem(
-                        type: "video",
-                        content: videoForTask,
-                        title: titleForTask,
-                        highlight: highlightForTask.isEmpty ? nil : highlightForTask,
-                        tags: tagsForTask,
-                        categoryId: categoryForTask,
-                        source: "manual",
-                        dueDate: dueForTask,
-                        priority: priorityForTask
-                    )
-                } else if !hasImages {
-                    _ = try await APIClient.shared.createItem(
-                        type: "text",
-                        content: titleForTask,
-                        title: titleForTask,
-                        highlight: highlightForTask.isEmpty ? nil : highlightForTask,
-                        tags: tagsForTask,
-                        categoryId: categoryForTask,
-                        source: "manual",
-                        dueDate: dueForTask,
-                        priority: priorityForTask
-                    )
+                if !didSaveAsImageItem {
+                    if hasLink {
+                        let linkContent = LinkStorage.packLinkItemContent(
+                            linkFieldValues: linkFields.map(\.value),
+                            videoURL: hasVideo ? videoTrimmed : nil
+                        )
+                        _ = try await APIClient.shared.createItem(
+                            type: "link",
+                            content: linkContent,
+                            title: titleForTask,
+                            highlight: highlightForTask.isEmpty ? nil : highlightForTask,
+                            tags: tagsForTask,
+                            categoryId: categoryForTask,
+                            source: "manual",
+                            dueDate: dueForTask,
+                            priority: priorityForTask
+                        )
+                    } else if hasVideo {
+                        _ = try await APIClient.shared.createItem(
+                            type: "video",
+                            content: videoForTask,
+                            title: titleForTask,
+                            highlight: highlightForTask.isEmpty ? nil : highlightForTask,
+                            tags: tagsForTask,
+                            categoryId: categoryForTask,
+                            source: "manual",
+                            dueDate: dueForTask,
+                            priority: priorityForTask
+                        )
+                    } else {
+                        _ = try await APIClient.shared.createItem(
+                            type: "text",
+                            content: titleForTask,
+                            title: titleForTask,
+                            highlight: highlightForTask.isEmpty ? nil : highlightForTask,
+                            tags: tagsForTask,
+                            categoryId: categoryForTask,
+                            source: "manual",
+                            dueDate: dueForTask,
+                            priority: priorityForTask
+                        )
+                    }
                 }
                 await MainActor.run {
                     isSuccess = true
