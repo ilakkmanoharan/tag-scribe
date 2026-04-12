@@ -105,6 +105,16 @@ function initSchema(database: Database.Database) {
       updated_at TEXT NOT NULL
     );
   `);
+  try {
+    database.exec("ALTER TABLE lists ADD COLUMN due_date TEXT");
+  } catch {
+    // column already exists
+  }
+  try {
+    database.exec("ALTER TABLE lists ADD COLUMN priority TEXT");
+  } catch {
+    // column already exists
+  }
 }
 
 function rowToItem(row: Record<string, unknown>): Item {
@@ -377,6 +387,8 @@ function rowToList(row: Record<string, unknown>): SavedList {
     itemIds,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
+    dueDate: (row.due_date as string | null | undefined) ?? undefined,
+    priority: (row.priority as string | null | undefined) ?? undefined,
   };
 }
 
@@ -390,7 +402,34 @@ export function createList(list: Omit<SavedList, "createdAt" | "updatedAt">): Sa
   const database = getDb();
   const now = new Date().toISOString();
   database
-    .prepare(`INSERT INTO lists (id, name, item_ids, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
-    .run(list.id, list.name, JSON.stringify(list.itemIds), now, now);
+    .prepare(
+      `INSERT INTO lists (id, name, item_ids, created_at, updated_at, due_date, priority) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(list.id, list.name, JSON.stringify(list.itemIds), now, now, list.dueDate ?? null, list.priority ?? null);
   return { ...list, createdAt: now, updatedAt: now };
+}
+
+export function getListById(id: string): SavedList | undefined {
+  const database = getDb();
+  const row = database.prepare("SELECT * FROM lists WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToList(row) : undefined;
+}
+
+export function updateList(
+  id: string,
+  patch: { name?: string; dueDate?: string | null; priority?: string | null }
+): SavedList | undefined {
+  const database = getDb();
+  const row = database.prepare("SELECT * FROM lists WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  if (!row) return undefined;
+  const current = rowToList(row);
+  const name = patch.name !== undefined ? patch.name.trim() : current.name;
+  if (!name) return undefined;
+  const dueDate = patch.dueDate !== undefined ? patch.dueDate : current.dueDate;
+  const priority = patch.priority !== undefined ? patch.priority : current.priority;
+  const now = new Date().toISOString();
+  database
+    .prepare(`UPDATE lists SET name = ?, due_date = ?, priority = ?, updated_at = ? WHERE id = ?`)
+    .run(name, dueDate ?? null, priority ?? null, now, id);
+  return getListById(id);
 }

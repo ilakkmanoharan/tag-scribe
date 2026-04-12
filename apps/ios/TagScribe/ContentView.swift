@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Main app content: tabbed UI (Library, Archive, Categories, Tags, Lists, Add, Settings).
+/// Main app content: Library, Archive, Categories, Tags, Lists, Add, Planner, Settings.
 struct ContentView: View {
     var body: some View {
         TabView {
@@ -10,6 +10,7 @@ struct ContentView: View {
             tab(NavigationStack { TagsView().toolbar { toolbarContent } }, title: "Tags", systemImage: "tag")
             tab(NavigationStack { ListsView().toolbar { toolbarContent } }, title: "Lists", systemImage: "list.bullet.rectangle")
             tab(NavigationStack { AddView().toolbar { toolbarContent } }, title: "Add", systemImage: "plus.circle")
+            tab(NavigationStack { YearlyPlannerView().toolbar { toolbarContent } }, title: "Planner", systemImage: "calendar")
             tab(NavigationStack { SettingsView() }, title: "Settings", systemImage: "gearshape")
         }
     }

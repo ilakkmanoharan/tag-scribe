@@ -4,6 +4,7 @@
  * Used from API routes only (server); requires uid from verified token.
  */
 
+import { FieldValue } from "firebase-admin/firestore";
 import { getAdminFirestore } from "./firebase-admin";
 import type { Item, Category, SavedList } from "@/types";
 
@@ -471,6 +472,8 @@ function docToList(id: string, data: Record<string, unknown>): SavedList {
     itemIds: Array.isArray(data.itemIds) ? (data.itemIds as string[]) : [],
     createdAt: (data.createdAt as string) ?? "",
     updatedAt: (data.updatedAt as string) ?? "",
+    dueDate: (data.dueDate as string | null | undefined) ?? undefined,
+    priority: (data.priority as string | null | undefined) ?? undefined,
   };
 }
 
@@ -496,8 +499,40 @@ export async function createList(
     itemIds: list.itemIds,
     createdAt,
     updatedAt,
+    ...(list.dueDate != null && list.dueDate !== "" ? { dueDate: list.dueDate } : {}),
+    ...(list.priority != null && list.priority !== "" ? { priority: list.priority } : {}),
   });
   return { ...list, createdAt, updatedAt };
+}
+
+export async function updateList(
+  uid: string,
+  listId: string,
+  patch: { name?: string; dueDate?: string | null; priority?: string | null }
+): Promise<SavedList | null> {
+  const col = userLists(uid);
+  if (!col) throw new Error("Firestore not configured");
+  const ref = col.doc(listId);
+  const snap = await ref.get();
+  if (!snap.exists) return null;
+  const existing = docToList(listId, snap.data()!);
+  const updates: Record<string, unknown> = { updatedAt: now() };
+  if (patch.name !== undefined) {
+    const t = patch.name.trim();
+    if (!t) return null;
+    updates.name = t;
+  }
+  if (patch.dueDate !== undefined) {
+    updates.dueDate =
+      patch.dueDate === "" || patch.dueDate === null ? FieldValue.delete() : patch.dueDate;
+  }
+  if (patch.priority !== undefined) {
+    updates.priority =
+      patch.priority === "" || patch.priority === null ? FieldValue.delete() : patch.priority;
+  }
+  await ref.update(updates);
+  const next = await ref.get();
+  return docToList(listId, next.data()!);
 }
 
 /** Delete all user data (categories, items, lists, user doc) for the given uid. */

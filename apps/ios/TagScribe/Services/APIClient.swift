@@ -5,9 +5,15 @@ import Foundation
 final class APIClient {
     static let shared = APIClient()
 
+    /// API origin with **no** trailing slash. A trailing slash produced `//api/...` URLs; redirects then often drop `Authorization`, causing 401 on PATCH.
     var baseURL: String {
-        (Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String)
+        let raw = (Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String)
             ?? "https://tag-scribe.vercel.app"
+        var t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        while t.hasSuffix("/") {
+            t.removeLast()
+        }
+        return t.isEmpty ? "https://tag-scribe.vercel.app" : t
     }
 
     private let session: URLSession = .shared
@@ -428,9 +434,54 @@ final class APIClient {
         }
         return try decoder.decode(SavedList.self, from: data)
     }
+
+    /// Update list name, due date, and/or priority. API: PATCH /api/lists/:id
+    func updateList(
+        id: String,
+        name: String,
+        hasDueDate: Bool,
+        dueDateISO: String?,
+        priority: String?
+    ) async throws -> SavedList {
+        let pathId = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        let url = URL(string: baseURL + "/api/lists/\(pathId)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (k, v) in await authHeaders() { request.setValue(v, forHTTPHeaderField: k) }
+        var body: [String: Any] = ["name": name]
+        if hasDueDate, let d = dueDateISO, !d.isEmpty {
+            body["dueDate"] = d
+        } else {
+            body["dueDate"] = NSNull()
+        }
+        if let p = priority, !p.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            body["priority"] = p.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        } else {
+            body["priority"] = NSNull()
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await session.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw APIError.server(http.statusCode)
+        }
+        return try decoder.decode(SavedList.self, from: data)
+    }
 }
 
-enum APIError: Error {
+enum APIError: LocalizedError {
     case unauthorized
     case server(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .unauthorized:
+            return "Not signed in or the server rejected your session (try signing in again)."
+        case .server(let code):
+            return "The server returned HTTP \(code). If this persists after signing in again, the app may need an update."
+        }
+    }
 }

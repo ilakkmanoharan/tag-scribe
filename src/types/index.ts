@@ -55,4 +55,8 @@ export interface SavedList {
   itemIds: string[];
   createdAt: string;
   updatedAt: string;
+  /** Optional calendar due date for the list (`YYYY-MM-DD`). */
+  dueDate?: string | null;
+  /** Optional priority: `low` | `medium` | `high`. */
+  priority?: string | null;
 }
