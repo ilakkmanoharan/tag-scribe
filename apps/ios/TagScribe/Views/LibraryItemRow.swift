@@ -54,17 +54,17 @@ struct LibraryItemRow: View {
         return 1
     }
 
-    /// URLs to show in the expanded row (multi-line `content` for `link` items; excludes embedded video line).
+    /// URLs to show in the expanded row (newline-separated HTTP URLs in `content`; excludes embedded video line).
     private var displayLinkURLs: [URL] {
-        if item.type == "link" {
+        switch item.type {
+        case "link", "image":
             return LinkStorage.displayWebLinkStrings(from: item.content).compactMap { URL(string: $0) }
+        default:
+            if item.content.hasPrefix("http://") || item.content.hasPrefix("https://") {
+                return LinkStorage.displayWebLinkStrings(from: item.content).compactMap { URL(string: $0) }
+            }
+            return []
         }
-        if item.content.hasPrefix("http://") || item.content.hasPrefix("https://"),
-           let first = LinkStorage.linkLines(from: item.content).first,
-           let u = URL(string: first) {
-            return [u]
-        }
-        return []
     }
 
     private var displayEmbeddedVideoURL: URL? {
@@ -109,16 +109,23 @@ struct LibraryItemRow: View {
             editLinkRows = segments.isEmpty ? [EditableLinkRow()] : segments.map { EditableLinkRow(value: $0) }
             editVideoUrl = embeddedVideo ?? ""
         } else if item.type == "image", contentIsUrl, !item.content.lowercased().contains("mp4") {
-            editLinkRows = [EditableLinkRow(value: item.content)]
+            let (segments, embeddedVideo) = LinkStorage.parseLinkItemContent(item.content)
+            let webLinks = segments.filter { LinkStorage.isValidHTTPURL($0) }
+            if !webLinks.isEmpty {
+                editLinkRows = webLinks.map { EditableLinkRow(value: $0) }
+                editVideoUrl = embeddedVideo ?? ""
+            } else {
+                editLinkRows = [EditableLinkRow(value: item.content)]
+                editVideoUrl = ""
+            }
         } else {
             editLinkRows = [EditableLinkRow()]
         }
-        // `link` items set `editVideoUrl` from embedded line above; do not overwrite here.
         if item.type == "video" {
             editVideoUrl = item.content
         } else if item.type == "image", contentIsUrl, item.content.lowercased().contains("mp4") {
             editVideoUrl = item.content
-        } else if item.type != "link" {
+        } else if item.type != "link", !(item.type == "image" && contentIsUrl && !item.content.lowercased().contains("mp4")) {
             editVideoUrl = ""
         }
         editHighlight = item.highlight ?? ""
@@ -852,6 +859,14 @@ struct LibraryItemRow: View {
                 let contentVal: String? = {
                     if item.type == "link" {
                         return LinkStorage.packLinkItemContent(linkFieldValues: editLinkRows.map(\.value), videoURL: videoOptional)
+                    }
+                    if item.type == "image" {
+                        let joined = LinkStorage.joinedHTTPURLs(editLinkRows.map(\.value))
+                        let hasVideo = videoOptional.map { LinkStorage.isValidHTTPURL($0) } ?? false
+                        if !joined.isEmpty || hasVideo {
+                            return LinkStorage.packLinkItemContent(linkFieldValues: editLinkRows.map(\.value), videoURL: videoOptional)
+                        }
+                        return nil
                     }
                     if !linkJoined.isEmpty { return linkJoined }
                     if LinkStorage.isValidHTTPURL(videoVal) { return videoVal }
