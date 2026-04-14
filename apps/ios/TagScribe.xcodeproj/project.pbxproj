@@ -332,7 +332,6 @@
 		};
 		SCP002 /* Create GoogleService-Info.plist for CI (Extension) */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -340,6 +339,7 @@
 			);
 			name = "Create GoogleService-Info.plist for CI (Extension)";
 			outputPaths = (
+				"$(PROJECT_DIR)/GoogleService-Info.plist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
