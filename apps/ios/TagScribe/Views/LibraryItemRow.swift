@@ -478,7 +478,7 @@ struct LibraryItemRow: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal)
                     List {
-                        ForEach(existingTags.filter { !item.tags.contains($0) }, id: \.self) { tag in
+                        ForEach(existingTags.filter { ex in !item.tags.contains(where: { $0.lowercased() == ex.lowercased() }) }, id: \.self) { tag in
                             Button(tag) {
                                 addTag(tag)
                                 showAddTag = false
@@ -655,19 +655,20 @@ struct LibraryItemRow: View {
                             TextField("New tag", text: $editNewTagInput)
                             Button("Add") {
                                 let t = editNewTagInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                                if !t.isEmpty, !editTags.contains(where: { $0.lowercased() == t.lowercased() }) {
-                                    editTags.append(t)
+                                let canon = LibraryNaming.canonicalTag(t, existing: existingTags + editTags)
+                                if !canon.isEmpty, !editTags.contains(where: { $0.lowercased() == canon.lowercased() }) {
+                                    editTags.append(canon)
                                     editNewTagInput = ""
                                 }
                             }
                             .disabled(editNewTagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
-                        if !existingTags.filter({ !editTags.contains($0) }).isEmpty {
+                        if !existingTags.filter({ ex in !editTags.contains(where: { $0.lowercased() == ex.lowercased() }) }).isEmpty {
                             Text("Existing — tap to add:")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             FlowLayout(spacing: 16, lineSpacing: 20) {
-                                ForEach(existingTags.filter { !editTags.contains($0) }, id: \.self) { tag in
+                                ForEach(existingTags.filter { ex in !editTags.contains(where: { $0.lowercased() == ex.lowercased() }) }, id: \.self) { tag in
                                     Button {
                                         if !editTags.contains(where: { $0.lowercased() == tag.lowercased() }) {
                                             editTags.append(tag)
@@ -743,8 +744,12 @@ struct LibraryItemRow: View {
     }
 
     private func addTag(_ tag: String) {
-        guard !tag.isEmpty else { return }
-        let updated = item.tags.contains(tag) ? item.tags : item.tags + [tag]
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let canon = LibraryNaming.canonicalTag(trimmed, existing: existingTags + item.tags)
+        let updated = item.tags.contains(where: { $0.lowercased() == canon.lowercased() })
+            ? item.tags
+            : item.tags + [canon]
         performUpdate(tags: updated)
     }
 
@@ -812,6 +817,11 @@ struct LibraryItemRow: View {
     private func addNewCategoryInEdit() {
         let name = editNewCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+        if let existing = LibraryNaming.existingCategory(named: name, in: editCategories) {
+            editCategoryId = existing.id
+            editNewCategoryName = ""
+            return
+        }
         addingCategory = true
         Task {
             do {
@@ -880,7 +890,7 @@ struct LibraryItemRow: View {
                 _ = try await APIClient.shared.updateItem(
                     id: item.id,
                     categoryId: editCategoryId,
-                    tags: editTags,
+                    tags: LibraryNaming.canonicalTags(editTags, existing: existingTags),
                     title: titleVal.isEmpty ? nil : titleVal,
                     content: contentVal,
                     highlight: highlightVal.isEmpty ? nil : highlightVal,

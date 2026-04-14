@@ -32,8 +32,14 @@ export async function POST(request: Request) {
     if (!trimmed) {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
-    const id = "cat-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
+    const lower = trimmed.toLowerCase();
     if (result.uid) {
+      const all = await firestore.getAllCategories(result.uid);
+      const existing = all.find((c) => c.name.trim().toLowerCase() === lower);
+      if (existing) {
+        return NextResponse.json(existing);
+      }
+      const id = "cat-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
       const category = await firestore.createCategory(result.uid, {
         id,
         name: trimmed,
@@ -43,7 +49,13 @@ export async function POST(request: Request) {
       });
       return NextResponse.json(category);
     }
-    const { createCategory } = await import("@/lib/db");
+    const { getAllCategories, createCategory } = await import("@/lib/db");
+    const allLocal = getAllCategories();
+    const existingLocal = allLocal.find((c) => c.name.trim().toLowerCase() === lower);
+    if (existingLocal) {
+      return NextResponse.json(existingLocal);
+    }
+    const id = "cat-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
     const category = createCategory({
       id,
       name: trimmed,

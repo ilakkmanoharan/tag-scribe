@@ -134,8 +134,9 @@ struct AddView: View {
                     TextField("New tag", text: $newTagInput)
                     Button("Add") {
                         let t = newTagInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !t.isEmpty, !selectedTags.contains(where: { $0.lowercased() == t.lowercased() }) {
-                            selectedTags.append(t)
+                        let canon = LibraryNaming.canonicalTag(t, existing: existingTags + selectedTags)
+                        if !canon.isEmpty, !selectedTags.contains(where: { $0.lowercased() == canon.lowercased() }) {
+                            selectedTags.append(canon)
                             newTagInput = ""
                         }
                     }
@@ -244,6 +245,11 @@ struct AddView: View {
     private func addNewCategory() {
         let name = newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+        if let existing = LibraryNaming.existingCategory(named: name, in: categories) {
+            categoryId = existing.id
+            newCategoryName = ""
+            return
+        }
         addingCategory = true
         Task {
             do {
@@ -283,7 +289,7 @@ struct AddView: View {
         let titleForTask = titleTrimmed
         let videoForTask = videoTrimmed
         let highlightForTask = highlight
-        let tagsForTask = selectedTags
+        let tagsForTask = LibraryNaming.canonicalTags(selectedTags, existing: existingTags)
         let categoryForTask = categoryId
         let dueForTask: String? = hasDueDate ? ItemScheduleFormat.isoString(from: dueDatePicker) : nil
         let priorityForTask: String? = priorityChoice.isEmpty ? nil : priorityChoice
