@@ -99,8 +99,8 @@ struct LibraryItemRow: View {
         await MainActor.run { loadedImages = results }
     }
 
-    /// Copies `item` + `categories` into edit-sheet @State. Call before presenting the sheet and again when the sheet appears so the first open shows correct tags/category (SwiftUI can build the sheet before same-transaction state updates are visible).
-    private func syncEditFormFromItem() {
+    /// Copies `item` into edit-sheet @State. When `mergeCategoriesFromParent` is true, seeds `editCategories` from the parent list (before a network refresh). When false (e.g. sheet `onAppear`), leaves `editCategories` alone so a prior `getCategories()` result is not replaced by a stale/empty parent snapshot.
+    private func syncEditFormFromItem(mergeCategoriesFromParent: Bool = true) {
         editTitle = item.title ?? ""
         editContent = item.type == "text" ? item.content : ""
         let contentIsUrl = item.content.hasPrefix("http://") || item.content.hasPrefix("https://")
@@ -142,7 +142,9 @@ struct LibraryItemRow: View {
         editTags = item.tags
         editCategoryId = item.categoryId
         editPhotoItems = []
-        editCategories = categories
+        if mergeCategoriesFromParent {
+            editCategories = categories
+        }
         editNewCategoryName = ""
         if item.type == "image" {
             editImageUrls = item.imageUrls ?? (item.content.isEmpty ? [] : [item.content])
@@ -156,14 +158,32 @@ struct LibraryItemRow: View {
     private func refreshEditCategoriesFromAPI() async {
         do {
             let fetched = try await APIClient.shared.getCategories()
-            await MainActor.run { editCategories = fetched }
+            await MainActor.run {
+                editCategories = fetched
+                ensurePickerIncludesCurrentCategory()
+            }
         } catch {
             await MainActor.run {
                 if editCategories.isEmpty {
                     editCategories = categories
                 }
+                ensurePickerIncludesCurrentCategory()
             }
         }
+    }
+
+    /// If the item’s `categoryId` is not in `editCategories`, append a row so the menu `Picker` selection is valid (otherwise SwiftUI shows “None” while the row still shows a category name).
+    private func ensurePickerIncludesCurrentCategory() {
+        let cid = editCategoryId ?? item.categoryId
+        guard let cid, !cid.isEmpty else { return }
+        guard !editCategories.contains(where: { $0.id == cid }) else { return }
+        let name =
+            categories.first(where: { $0.id == cid })?.name
+            ?? categoryName
+            ?? "Category"
+        editCategories.append(
+            Category(id: cid, name: name, description: nil, order: 999_999, createdAt: "", updatedAt: "")
+        )
     }
 
     var body: some View {
@@ -397,7 +417,7 @@ struct LibraryItemRow: View {
 
                             Button {
                                 Task { @MainActor in
-                                    syncEditFormFromItem()
+                                    syncEditFormFromItem(mergeCategoriesFromParent: true)
                                     await refreshEditCategoriesFromAPI()
                                     showEdit = true
                                 }
@@ -709,6 +729,15 @@ struct LibraryItemRow: View {
                 }
                 .navigationTitle("Edit item")
                 .navigationBarTitleDisplayMode(.inline)
+                .onAppear {
+                    // Sheet content can render before @State from the Edit button is visible; re-sync from `item` without clobbering `editCategories` from the API.
+                    syncEditFormFromItem(mergeCategoriesFromParent: false)
+                    ensurePickerIncludesCurrentCategory()
+                    DispatchQueue.main.async {
+                        syncEditFormFromItem(mergeCategoriesFromParent: false)
+                        ensurePickerIncludesCurrentCategory()
+                    }
+                }
                 .task(id: "\(showEdit)-\(item.id)-\(editImageUrls.count)") {
                     if showEdit, item.type == "image", !editImageUrls.isEmpty {
                         await loadEditExistingImages()
