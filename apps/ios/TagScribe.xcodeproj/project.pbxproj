@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		19F1D60A2F5BD6BE00122A34 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */; };
+		19CB5C2D2F8EE7A5008038DA /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */; };
 		19F1D60B2F5BD6BE00122A35 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 19F1D6092F5BD6BE00122A34 /* GoogleService-Info.plist */; };
 		BLD001 /* TagScribeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF001 /* TagScribeApp.swift */; };
 		BLD002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF002 /* ContentView.swift */; };
@@ -18,11 +18,11 @@
 		BLD007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = REF008 /* Assets.xcassets */; };
 		BLD010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF010 /* RootView.swift */; };
 		BLD011 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF011 /* SignInView.swift */; };
-		BLD020 /* JWTKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF020 /* JWTKeychain.swift */; };
-		BLD021 /* JWTKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF020 /* JWTKeychain.swift */; };
 		BLD013 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF014 /* ShareViewController.swift */; };
 		BLD018 /* TagScribeShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = REF017 /* TagScribeShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BLD019 /* Social.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = REF019 /* Social.framework */; };
+		BLD020 /* JWTKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF020 /* JWTKeychain.swift */; };
+		BLD021 /* JWTKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF020 /* JWTKeychain.swift */; };
 		BLD030 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF030 /* LibraryView.swift */; };
 		BLD031 /* ArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF031 /* ArchiveView.swift */; };
 		BLD032 /* CategoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = REF032 /* CategoriesView.swift */; };
@@ -72,13 +72,13 @@
 		REF009 /* TagScribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TagScribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		REF010 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		REF011 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
-		REF020 /* JWTKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JWTKeychain.swift; sourceTree = "<group>"; };
 		REF014 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		REF015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		REF016 /* TagScribeShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagScribeShareExtension.entitlements; sourceTree = "<group>"; };
 		REF017 /* TagScribeShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TagScribeShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		REF018 /* TagScribe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TagScribe.entitlements; sourceTree = "<group>"; };
 		REF019 /* Social.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Social.framework; path = System/Library/Frameworks/Social.framework; sourceTree = SDKROOT; };
+		REF020 /* JWTKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JWTKeychain.swift; sourceTree = "<group>"; };
 		REF030 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		REF031 /* ArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveView.swift; sourceTree = "<group>"; };
 		REF032 /* CategoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesView.swift; sourceTree = "<group>"; };
@@ -299,8 +299,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				19CB5C2D2F8EE7A5008038DA /* GoogleService-Info.plist in Resources */,
 				BLD007 /* Assets.xcassets in Resources */,
-				19F1D60A2F5BD6BE00122A34 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -324,6 +324,7 @@
 			);
 			name = "Create GoogleService-Info.plist for CI";
 			outputPaths = (
+				"$(PROJECT_DIR)/GoogleService-Info.plist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -435,7 +436,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = TagScribe/TagScribe.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = LZUY99AX77;
 				ENABLE_PREVIEWS = YES;
@@ -448,7 +449,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -466,7 +467,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = TagScribe/TagScribe.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = LZUY99AX77;
 				ENABLE_PREVIEWS = YES;
@@ -479,7 +480,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -495,7 +496,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = TagScribeShareExtension/TagScribeShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = LZUY99AX77;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TagScribeShareExtension/Info.plist;
@@ -505,7 +506,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios.TagScribeShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -522,7 +523,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = TagScribeShareExtension/TagScribeShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = LZUY99AX77;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TagScribeShareExtension/Info.plist;
@@ -532,7 +533,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.tagscribe.ios.TagScribeShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -586,19 +587,6 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		PKGPROD /* FirebaseAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = PKGREF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAuth;
-		};
-		PKGPROD2 /* FirebaseCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = PKGREF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseCore;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = PRJ001 /* Project object */;
 }

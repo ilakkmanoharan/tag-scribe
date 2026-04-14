@@ -523,7 +523,11 @@ private final class AppleSignInRunner: NSObject, ObservableObject, ASAuthorizati
             return w
         }
         Self.log.error("AUTH apple UI: no window for presentationAnchor — Apple sheet may fail")
-        return UIWindow()
+        // iOS 26 deprecates `UIWindow()`; prefer a scene-backed window, then frame-based fallback.
+        if let scene = scenes.first {
+            return UIWindow(windowScene: scene)
+        }
+        return UIWindow(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
     }
 }
 
