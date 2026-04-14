@@ -152,6 +152,20 @@ struct LibraryItemRow: View {
         editExistingImageData = []
     }
 
+    /// Fills the category picker from the API so it is never empty when the parent list snapshot is stale (first Edit open).
+    private func refreshEditCategoriesFromAPI() async {
+        do {
+            let fetched = try await APIClient.shared.getCategories()
+            await MainActor.run { editCategories = fetched }
+        } catch {
+            await MainActor.run {
+                if editCategories.isEmpty {
+                    editCategories = categories
+                }
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
@@ -384,7 +398,7 @@ struct LibraryItemRow: View {
                             Button {
                                 Task { @MainActor in
                                     syncEditFormFromItem()
-                                    // Present after sync so the sheet reads up-to-date @State (fixes empty tags / None category on first open).
+                                    await refreshEditCategoriesFromAPI()
                                     showEdit = true
                                 }
                             } label: {
@@ -712,11 +726,6 @@ struct LibraryItemRow: View {
                             saveEdit()
                         }
                         .disabled(savingEdit)
-                    }
-                }
-                .onChange(of: showEdit) { _, isPresented in
-                    if isPresented {
-                        syncEditFormFromItem()
                     }
                 }
             }
