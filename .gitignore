@@ -48,6 +48,9 @@ coverage/
 
 # iOS / Xcode
 apps/ios/GoogleService-Info.plist
+# Per-user Xcode state (folder name is `xcuserdata`, not *.xcuserdata)
+**/xcuserdata/
+*.xcuserstate
 *.xcuserdata/
 *.xcworkspace/xcuserdata/
 
